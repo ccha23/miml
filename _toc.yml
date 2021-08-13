@@ -1,0 +1,9 @@
+format: jb-book
+root: miml.ipynb
+
+parts: 
+  - caption: Part 1
+#     numbered: false
+    chapters:
+    - file: part1/variational
+    - file: part1/ref
