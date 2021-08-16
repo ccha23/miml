@@ -7,3 +7,7 @@ parts:
     chapters:
     - file: part1/variational
     - file: part1/ref
+  - caption: Part 2
+#     numbered: false
+    chapters:
+    - file: part2/VanillaVAE

@@ -7,10 +7,12 @@ jupytext:
     format_version: 0.13
     jupytext_version: 1.11.4
 kernelspec:
-  display_name: Python 3.8 (XPython)
+  display_name: Python 3 (ipykernel)
   language: python
-  name: xpython
+  name: python3
 ---
+
++++ {"slideshow": {"slide_type": "slide"}}
 
 # Mutual Information Estimation
 
@@ -24,54 +26,110 @@ $\def\abs#1{\left\lvert #1 \right\rvert}
 \def\RM#1{\boldsymbol{\mathsf{#1}}}
 \def\op#1{\operatorname{#1}}
 \def\E{\op{E}}
-\def\d{\mathrm{\mathstrut d}}
-$
+\def\d{\mathrm{\mathstrut d}}$
+
+```{code-cell} ipython3
+import ipywidgets as widgets
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from IPython import display
+
+%matplotlib inline
+```
+
++++ {"slideshow": {"slide_type": "slide"}}
+
+## Problem formulations
 
 +++
 
-## Formulation
+**How to formulate the problem of mutual information estimation?**
 
-+++
++++ {"slideshow": {"slide_type": "subslide"}}
 
 The problem of estimating the mutual information is:
 
-+++
++++ {"slideshow": {"slide_type": "-"}}
 
-```{prf:definition}
-:label: MI-estimation
+---
+Given $n$ samples
 
-Given *i.i.d. samples* 
-$(\R{X}_1,\R{Y}_1),\dots, (\R{X}_n,\R{Y}_n)$ drawn from an *unknown* probability measure $P_{\R{X},\R{Y}}\in \mc{P}(\mc{X},\mc{Y})$, estimate the *mutual information*
+$$(\R{X}_1,\R{Y}_1),\dots, (\R{X}_n,\R{Y}_n) \stackrel{iid}{\sim} P_{\R{X},\R{Y}}\in \mc{P}(\mc{X},\mc{Y})$$ 
+
+i.i.d. drawn from an *unknown* probability measure $P_{\R{X},\R{Y}}$ from the space $\mc{X}\times \mc{Y}$, estimate the *mutual information (MI)*
 
 $$
 \begin{align}
-I(\R{X}\wedge\R{Y}) &:= E\left[\log \frac{d P_{\R{X},\R{Y}}(\R{X},\R{Y})}{d (P_{\R{X}}(\R{X}) \times P_{\R{Y}}(\R{Y}))} \right].
+I(\R{X}\wedge\R{Y}) &:= E\left[\log \frac{d P_{\R{X},\R{Y}}(\R{X},\R{Y})}{d (P_{\R{X}} \times P_{\R{Y}})(\R{X},\R{Y})} \right].
 \end{align}
 $$ (MI)
+
+---
+
++++
+
+---
+
+**Exercise** Run the following code cell a couple of times to see different distributions of samples of $(\R{X},\R{Y})$. What is unknown about the sampling distribution?
+
+```{code-cell} ipython3
+---
+slideshow:
+  slide_type: fragment
+tags: []
+---
+# Sampling from an unknown probability measure
+rho = 0.8 - 0.19 * np.random.rand()
+mean, cov, n = [0, 0], [[1, rho], [rho, 1]], 100
+rng = np.random.default_rng()
+XY = rng.multivariate_normal(mean, cov, n)
+
+# Show the samples
+data = pd.DataFrame(XY, columns=["X", "Y"])
+display.display(data)
+
+# Plot the samples
+def plot_samples_with_kde(data, **kwargs):
+    p = sns.PairGrid(data, **kwargs)
+    p.map_lower(sns.scatterplot)  # scatter plot of samples
+    p.map_upper(sns.kdeplot)  # kernel density estimate for pXY
+    p.map_diag(sns.kdeplot)  # kde for pX and pY
+    return p
+
+
+p = plot_samples_with_kde(data)
+plt.show()
 ```
 
-+++
++++ {"tags": ["hide-cell"]}
 
----
-Given *i.i.d. samples* 
-$(\R{X}_1,\R{Y}_1),\dots, (\R{X}_n,\R{Y}_n)$ drawn from an *unknown* probability measure $P_{\R{X},\R{Y}}\in \mc{P}(\mc{X},\mc{Y})$, estimate the *mutual information*
+The density is
+
 $$
-\begin{align}
-I(\R{X}\wedge\R{Y}) &:= E\left[\log \frac{d P_{\R{X},\R{Y}}(\R{X},\R{Y})}{d (P_{\R{X}}(\R{X}) \times P_{\R{Y}}(\R{Y}))} \right].
-\end{align}
-$$ (MI)
+\frac{d P_{\R{X},\R{Y}}}{dxdy} = \mc{N}_{\M{0},\left[\begin{smallmatrix}1 & \rho \\ \rho & 1\end{smallmatrix}\right]}(x,y)
+$$
+
+but $\rho$ is unknown (uniformly random over $[0.8,0.99)$).
+
++++
 
 ---
 
 +++
 
-This can be viewed as an estimation of the KL divergence:
+**Can we generalize the problem further?**
 
-+++
++++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
+
+Estimating MI may be viewed as a special case of estimating the KL divergence:
+
++++ {"slideshow": {"slide_type": "-"}}
 
 ---
-Given the sequences
-$\R{Z}^n:=(\R{Z}_1,\dots, \R{Z}_n)$ and $\R{Z}'^{n'}$ of samples i.i.d. drawn from the unknown probability measures $P_{\R{Z}}$ and $P_{\R{Z}'}$ in $\mc{P}(\mc{Z})$ respectively, estimate the *divergence*
+
+Estimate the *divergence*
 
 $$
 \begin{align}
@@ -79,51 +137,25 @@ D(P_{\R{Z}}\|P_{\R{Z}'}) &:= E\left[\log \frac{d P_{\R{Z}}(\R{Z})}{d P_{\R{Z}'}(
 \end{align}
 $$ (D)
 
----
-
-+++
-
-{eq}`MI` is obtained from {eq}`D` with 
-$$
-\begin{align}
-P_{\R{Z}} &= P_{\R{X}, \R{Y}}\\
-P_{\R{Z}'} &= P_{\R{X}}\times P_{\R{Y}}.
-\end{align}
-$$
-
-+++
-
-Note that, as the dependency between $\R{Z}$ and $\R{Z}'$ does not affect the divergence, $n$ and $n'$ need not be the same.
-
-+++
-
-Indeed, to apply a divergence estimate to a mutual information estimate, one needs to approximate the i.i.d. sampling of $P_{\R{X}}\times P_{\R{Y}}$ using samples of $P_{\R{X}\R{Y}}$. This is often done by the re-sampling trick 
-$$
-\begin{align}
-\R{Z}'^{n'} &=((\R{X}_{\R{J}_1},\R{Y}_{\R{K}_1})\mid i \in [n'])
-\end{align}
-$$
-where $\R{J}_i$ and $\R{K}_i$ for $i\in [n']$ are (nearly) independent and uniformly random indices taking values from $[n]:=\Set{1,\dots,n}$.
-
-+++
-
-Regarding the mutual information as a divergence, the problem can be further generalized to estimtating other divergence measures such as the $f$-divergence:
-
-+++
+using 
+- a sequence $\R{Z}^n:=(\R{Z}_1,\dots, \R{Z}_n)\sim P_{\R{Z}}^n$ of i.i.d. samples from $P_{\R{Z}}$ if $P_{\R{Z}}$ is unknown, and
+- another sequence ${\R{Z}'}^{n'}\sim P_{\R{Z}'}^{n'}$ of i.i.d. samples from $P_{\R{Z}'}$  if $P_{\R{Z}'}$ is also unknown.
 
 ---
-Given the sequences
-$\R{Z}^n$ and $\R{Z}'^{n'}$ of i.i.d. samples drawn from the unknown probability measures $P_{\R{Z}}$ and $P_{\R{Z}'}$ in $\mc{P}(\mc{Z})$ respectively, estimate the *f-divergence*
+
++++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
+
+Regarding the mutual information as a divergence from joint to product distributions, the problem can be further generalized to estimtate other divergence measures such as the $f$-divergence:
+
++++
+
+For a strictly convex function $f$ with $f(1)=0$,
 
 $$
 \begin{align}
-D_f(P_{\R{Z}}\|P_{\R{Z}'}) &:= E\left[ f\left(\frac{d P_{\R{Z}}(\R{Z}')}{d P_{\R{Z}'}(\R{Z}')}\right). \right]
+D_f(P_{\R{Z}}\|P_{\R{Z}'}) &:= E\left[ f\left(\frac{d P_{\R{Z}}(\R{Z}')}{d P_{\R{Z}'}(\R{Z}')}\right) \right].
 \end{align}
 $$ (f-D)
-
-for a strictly convex function $f$ with $f(1)=0$.
-
----
 
 +++
 
@@ -136,11 +168,27 @@ $$
 
 +++
 
+---
+
+**Exercise**
+
+Show that $D_f(P_{\R{Z}}\|P_{\R{Z}'})\geq 0$ with equality iff $P_{\R{Z}}=P_{\R{Z}'}$ using Jensen's inequality and the properties of $f$.
+
++++
+
+**Solution**
+
 It is a valid divergence because, by Jensen's inequality,
+
 $$
 D_f(P_{\R{Z}}\|P_{\R{Z}'}) \geq  f\bigg( \underbrace{E\left[ \frac{d P_{\R{Z}}(\R{Z}')}{d P_{\R{Z}'}(\R{Z}')} \right]}_{=1}\bigg) = 0
 $$
+
 with equality iff $P_{\R{Z}}=P_{\R{Z}'}$.
+
++++
+
+---
 
 +++
 
@@ -154,37 +202,246 @@ $$ (avg-f-D)
 
 +++
 
-However, this is not a valid estimate because it uses the unknown measures $P_{\R{Z}}$ and $P_{\R{Z}'}$ directly.
+However, this is not a valid estimate because it involves the unknown measures $P_{\R{Z}}$ and $P_{\R{Z}'}$.
 
 +++
 
----
-Given the sequences
-$\R{Z}^n$ and $\R{Z}'^{n'}$ of i.i.d. samples drawn from the unknown probability measures $P_{\R{Z}}$ and $P_{\R{Z}'}$ in $\mc{P}(\mc{Z})$ respectively, estimate the *(probabilistic) discriminator*
+One may further estimate the *density ratio*
 
 $$
 \begin{align}
-z \mapsto \frac{d P_{\R{Z}}(z)}{d P_{\R{Z}'}(z)}.
+z \mapsto \frac{d P_{\R{Z}}(z)}{d P_{\R{Z}'}(z)}
 \end{align}
 $$ (dP-ratio)
 
++++
+
+or estimate the density
+
+$$
+\begin{align}
+p_{\R{Z}}&:=\frac{dP_{\R{Z}}(z)}{dz}.
+\end{align}
+$$ (pdf/pmf)
+
++++
+
+Estimating MI well neither require nor imply the divergence/density to be estimated well. However, MI estimation is often not the end goal, but an objective to train a neural network to return the divergence/density. The features/representations learned by the neural network may be applicable to different downstream inference tasks.
+
++++
+
+## MI estimation via KL divergence
+
++++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
+
+**How to estimate MI via KL divergence?**
+
++++
+
+One way is to obtain MI {eq}`MI` from the KL divergence {eq}`D` as follows:
+
++++
+
+$$
+\begin{align*}
+I(\R{X}\wedge \R{Y}) = D(\underbrace{P_{\R{X},\R{Y}}}_{P_{\R{Z}}}\| \underbrace{P_{\R{X}}\times P_{\R{Y}}}_{P_{\R{Z}'}}).
+\end{align*}
+$$
+
++++ {"slideshow": {"slide_type": "fragment"}, "tags": []}
+
+---
+**Exercise** 
+
+Although $\R{X}^n$ and $\R{Y}^n$ for MI estimation should have the same length, $\R{Z}^n$ and ${\R{Z}'}^{n'}$ can have different lengths, i.e., $n \not\equiv n'$. Why?
+
++++ {"tags": ["hide-cell"], "slideshow": {"slide_type": "fragment"}}
+
+**Solution** The dependency between $\R{Z}$ and $\R{Z}'$ does not affect the divergence.
+
++++
+
+---
+
++++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
+
+**But how to obtain ${\R{Z}'}^{n'}$ for estimating the divergence?**
+
++++ {"slideshow": {"slide_type": "fragment"}, "tags": []}
+
+One way is to use the resampling trick to approximate the i.i.d. sampling of $P_{\R{X}}\times P_{\R{Y}}$ using samples from $P_{\R{X}\R{Y}}$:
+
+$$
+\begin{align}
+P_{\R{Z}'^{n'}} &\approx P_{((\R{X}_{\R{J}_i},\R{Y}_{\R{K}_i})\mid i \in [n'])}
+\end{align}
+$$
+
+where $\R{J}_i$ and $\R{K}_i$ for $i\in [n']$ are independent and uniformly random indices
+
+$$
+P_{\R{J},\R{K}} = \op{Uniform}_{[n]\times [n]}
+$$
+
+and $[n]:=\Set{1,\dots,n}$.
+
++++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
+
+Mutual Information Neural Estimation (MINE) {cite}`belghazi2018mine` uses the following implementation that samples $(\R{J},\R{K})$ but without replacement. You may change $n'$ using the slider for `n_`.
+
+```{code-cell} ipython3
+def resample(XY, size, replace=False):
+    index = rng.choice(range(XY.shape[0]), size=size, replace=replace)
+    return XY[index]
+
+
+@widgets.interact
+def plot_resampled_data_without_replacement(n_=(2, n)):
+    XY_ = np.block([resample(XY[:, [0]], n_), resample(XY[:, [1]], n_)])
+    resampled_data = pd.DataFrame(XY_, columns=["X'", "Y'"])
+    p_ = plot_samples_with_kde(resampled_data)
+    plt.show()
+```
+
+**Exercise** To allow $n>n'$, we need to sample the index with replacement. Complete the following code and observe what happens when $n \gg n'$
+
+```{code-cell} ipython3
+:tags: []
+
+@widgets.interact
+def plot_resampled_data_with_replacement(
+    n_=widgets.IntSlider(20 * n, 2, 50 * n, continuous_update=False)
+):
+    ### BEGIN SOLUTION
+    XY_ = np.block(
+        [resample(XY[:, [0]], n_, replace=True), resample(XY[:, [1]], n_, replace=True)]
+    )
+    ### END SOLUTION
+    resampled_data = pd.DataFrame(XY_, columns=["X'", "Y'"])
+    p_ = plot_samples_with_kde(resampled_data)
+    plt.show()
+```
+
++++ {"slideshow": {"slide_type": "fragment"}, "tags": []}
+
+---
+
+**Exercise** Explain whether the resampling trick gives i.i.d. samples $(\R{X}_{\R{J}_i},\R{Y}_{\R{K}_i})$ for the cases with replacement and without replacement respectively?
+
++++ {"tags": ["hide-cell"], "slideshow": {"slide_type": "fragment"}}
+
+**Solution** The samples are identically distributed. However, they are not independent except in the trivial case $n=1$ or $n'=1$, regardless of whether the sample is with replacement or not. Consider $n=1$ and $n'=2$ as an example.
+
++++
+
 ---
 
 +++
 
-Finally, one can apply the solution to the more general problem of estimating an unknown probability measure $P_{\R{Z}}$:
+**Is it possible to generate i.i.d. samples for ${\R{Z}'}^{n'}$?**
+
++++
+
+Consider another formula for MI:
+
++++
+
+---
+**Proposition** 
+
+$$
+\begin{align}
+I(\R{X}\wedge \R{Y}) &= D(P_{\R{X},\R{Y}}\|P_{\R{X}'}\times P_{\R{Y}'}) - D(P_{\R{X}}\|P_{\R{X}'}) - D(P_{\R{Y}}\|P_{\R{Y}'})
+\end{align}
+$$ (MI-E)
+
+for $P_{\R{X}'}\times P_{\R{Y}'}$, called the (product) reference distribution, satisfying 
+
+$$
+\begin{align}
+P_{\R{X}'}\times P_{\R{Y}'} \preceq P_{\R{X},\R{Y}'},
+\end{align}
+$$ (finite-D)
+
+i.e., any event of $\mc{X}\times \mc{Y}$ probable w.r.t. $P_{\R{X},\R{Y}}$ is also probable w.r.t. $P_{\R{X}'}\times P_{\R{Y}'}$.
+
+---
+
++++
+
+Mutual Information Neural Entropic Estimation (MI-NEE) {cite}`chan2019neural` uses {eq}`MI-E` to estimate MI by estimating the three divergences. $P_{\R{X}'}$ and $P_{\R{Y}'}$ are known distributions and so arbitrarily many i.i.d. samples can be drawn from them directly without using the resampling trick.
+
++++
+
+{eq}`finite-D` is a mild condition to ensure that the divergences are finite.
 
 +++
 
 ---
 
-Given i.i.d. samples $\R{Z}^n$ drawn from the unknown probability measure $P_{\R{Z}}\in \mc{P}(\mc{Z})$, estimate the pdf/pmf $p_{\R{Z}}(z)=\frac{dP_{\R{Z}}(z)}{dz}$. 
+**Exercise** Prove the above proposition.
+
++++
+
+**Proof**
+
+$$
+\begin{align}
+I(\R{X}\wedge \R{Y}) &= H(\R{X}) + H(\R{Y}) - H(\R{X},\R{Y})\\
+&= E\left[-\log dP_{\R{X}'}(\R{X})\right] - D(P_{\R{X}}\|P_{\R{X}'})\\
+&\quad+E\left[-\log dP_{\R{Y}'}(\R{Y})\right] - D(P_{\R{Y}}\|P_{\R{Y}'})\\
+&\quad-E\left[-\log d(P_{\R{X}'}\times P_{\R{Y}'})(\R{X},\R{Y})\right] + D(P_{\R{X},\R{Y}}\|P_{\R{X}'}\times P_{\R{Y}'})\\
+&= D(P_{\R{X},\R{Y}}\|P_{\R{X}'}\times P_{\R{Y}'}) - D(P_{\R{X}}\|P_{\R{X}'}) - D(P_{\R{Y}}\|P_{\R{Y}'})
+\end{align}
+$$
 
 ---
 
 +++
 
-Estimating the divergence well neither require nor imply the probability measure to be estimated well. However, the divergence estimate can be used as an objective to train a neural network to return the probability estimates. Indeed, the divergence estimate is often not the end goal. What can be more valuable are the features/representations learned by the neural network and applicable to different downstream inference tasks.
+---
+
+**Corollary**
+
+
+$$
+\begin{align}
+I(\R{X}\wedge \R{Y}) &= \inf_{\substack{P_{\R{X}'}\in \mc{P}(\mc{X})\\ P_{\R{Y}'}\in \mc{P}(\mc{Y})}} D(P_{\R{X},\R{Y}}\|P_{\R{X}'}\times P_{\R{Y}'}).
+\end{align}
+$$ (MI-ub)
+
+where the optimal solution is $P_{\R{X}'}\times P_{\R{Y}'}=P_{\R{X}}\times P_{\R{Y}}$, the product of marginal distributions of $\R{X}$ and $\R{Y}$. 
+
+---
+
++++
+
+The corollary follows from the proposition because
+
+
+removing from the {eq}`(MI-E)` the two divergences $$D(P_{\R{X}}\|P_{\R{X}'}), D(P_{\R{Y}}\|P_{\R{Y}'})\geq 0$$ in {eq}`
+
+and $I(\R{X}\wedge\R{Y})$ does not depend on the reference distribution.
+
+```{code-cell} ipython3
+
+```
+
+We can also write mutual information in terms of the entropy:
+
++++
+
+Another way is to write the mutual information as a conditional divergence:
+
++++
+
+$$
+\begin{align*}
+I(\R{X}\wedge \R{Y}) &= E\left[\log \frac{P_{\R{Y}|\R{X}}(\R{Y}|\R{X})}{P_{\R{Y}}(\R{Y})} \right]\\
+&= E\left[D(P_{\R{Y}|\R{X}}(\cdot|\R{X})\|P_{\R{Y}})\right]
+=: E\left[D(P_{\R{Y}|\R{X}}\|P_{\R{Y}}|P_{\R{X}})\right]
+\end{align*}
+$$
 
 +++
 
@@ -219,7 +476,11 @@ almost surely.
 
 +++
 
-It is easy to check that the optimal solution {eq}`D1:sol` satisfies the constraint in the supremum {eq}`D1` and gives the KL divergence {eq}`D` as desired. The proposition states further that $E[\log r(\R{Z})]$ for any feasible discriminator $r$ is a lower bound on the divergence.
+It is easy to check that the optimal solution {eq}`D1:sol` satisfies the constraint in the supremum {eq}`D1` and gives the KL divergence {eq}`D` as desired.
+
++++
+
+The proposition states further that $E[\log r(\R{Z})]$ for any feasible density ratio $r$ is a lower bound on the divergence.
 
 +++
 
@@ -235,6 +496,8 @@ D(P_{\R{Z}}\|P_{\R{Z}'})  &= D(P_{\R{Z}}\|P_{\R{Z}'}) - \inf_{Q\in \mc{P}(\mc{Z}
 $$
 
 which gives {eq}`D1` by a change of variable $r(z) = \frac{dQ(z)}{dP_{\R{Z}'}(z)}$. 
+
++++
 
 The constraint on $r$ is obtained from the constraint on $Q\in \mc{P}(\mc{Z})$, i.e., with $dQ(z)=r(z)dP_{\R{Z}'}(z)$, 
 
@@ -255,7 +518,7 @@ $$
 
 +++
 
-The idea of neural estimation is to use the sample average {eq}`avg-f-D` to estimate the divergence. Since the discriminator {eq}`dP:ratio` is not know, a neural network can be trained to approximate the discriminator by gradient descent on the lower bound of the divergence.
+The idea of neural estimation is to use the sample average {eq}`avg-f-D` to estimate the divergence. Since the density ratio {eq}`dP:ratio` is not known, a neural network can be trained to approximate it by gradient descent on the lower bound of the divergence.
 
 +++
 
@@ -291,7 +554,7 @@ which satisfies the constraint automatically for any function $g:\mc{Z}\to \math
 
 $$
 \begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{g: \mc{Z} \to \mathbb{R}} E[g(Z)] - \log E[e^{g(Z')}]
+D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{g: \mc{Z} \to \mathbb{R}} E[g(\R{Z})] - \log E[e^{g(\R{Z}')}]
 \end{align}
 $$ (DV)
 
@@ -308,11 +571,11 @@ almost surely for some constant $c$.
 
 +++
 
-Note that $g$ 
+Note that $g$
 
 +++
 
-The *mutual information neural estimation (MINE)* in {cite}`belghazi2018mine` uses the Donsker-Varadhan formula for the KL divergence: 
+The *mutual information neural estimation (MINE)* in {cite}`belghazi2018mine` uses the Donsker-Varadhan formula for the KL divergence:
 
 +++
 
@@ -328,6 +591,25 @@ where $P_{\R{X}',\R{Y}'}:=P_{\R{X}}\times P_{\R{Y}}$ and $g_{\theta}$ is a neura
 
 +++
 
+Consider another change of variable:
+
+$$
+\begin{align}
+q(z) &= \frac{e^{g(z)}}{1+e^{g(z)}}, & \text{or equivalently}\\
+g(z) &= \log \frac{q(z)}{1-q(z)}
+\end{align}
+$$
+
++++
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{q: \mc{Z} \to (0,1)} E\left[\log \frac{q(\R{Z})}{1-q(\R{Z})}\right] - \log E\left[\frac{q(\R{Z}')}{1-q(\R{Z}')}\right]
+\end{align}
+$$
+
++++
+
 The mutual information between two random variables is defined as
 $$
 \begin{align}
@@ -336,11 +618,11 @@ I(\R{X}\wedge \R{Y}) &= D(P_{\R{X},\R{Y}}\|P_{\R{X}},P_{\R{Y}})\\
 \end{align}
 $$
 
-```{code-cell}
+```{code-cell} ipython3
 
 ```
 
-To estimate mutual information using a neural network, 
+To estimate mutual information using a neural network,
 
 +++
 
@@ -406,23 +688,3 @@ $$
 for some constant $c$.
 
 The optimal solut
-
-+++
-
-![f-D](f-D.dio.svg)
-
-```{code-cell}
-from IPython import display 
-```
-
-```{code-cell}
-display.HTML(filename='f-D.html')
-```
-
-```{code-cell}
-display.IFrame(src="f-D.html", width="845", height="415")
-```
-
-```{code-cell}
-
-```
