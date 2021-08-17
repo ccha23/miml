@@ -123,13 +123,13 @@ but $\rho$ is unknown (uniformly random over $[0.8,0.99)$).
 
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
-Estimating MI may be viewed as a special case of estimating the KL divergence:
+Estimating MI may be viewed as a special case of the following problem:
 
 +++ {"slideshow": {"slide_type": "-"}}
 
 ---
 
-Estimate the *divergence*
+Estimate the KL *divergence*
 
 $$
 \begin{align}
@@ -139,13 +139,13 @@ $$ (D)
 
 using 
 - a sequence $\R{Z}^n:=(\R{Z}_1,\dots, \R{Z}_n)\sim P_{\R{Z}}^n$ of i.i.d. samples from $P_{\R{Z}}$ if $P_{\R{Z}}$ is unknown, and
-- another sequence ${\R{Z}'}^{n'}\sim P_{\R{Z}'}^{n'}$ of i.i.d. samples from $P_{\R{Z}'}$  if $P_{\R{Z}'}$ is also unknown.
+- another sequence ${\R{Z}'}^{n'}\sim P_{\R{Z}'}^{n'}$ of i.i.d. samples from $P_{\R{Z}'}$  if $P_{\R{Z}'}$, the *reference measure* of $P_{\R{Z}}$, is also unknown.
 
 ---
 
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
-Regarding the mutual information as a divergence from joint to product distributions, the problem can be further generalized to estimtate other divergence measures such as the $f$-divergence:
+Regarding the mutual information as a divergence from joint to product distributions, the problem can be further generalized to estimtate other divergences such as the $f$-divergence:
 
 +++
 
@@ -226,7 +226,216 @@ $$ (pdf/pmf)
 
 +++
 
+## Neural estimation of KL divergence
+
++++
+
 Estimating MI well neither require nor imply the divergence/density to be estimated well. However, MI estimation is often not the end goal, but an objective to train a neural network to return the divergence/density. The features/representations learned by the neural network may be applicable to different downstream inference tasks.
+
++++
+
+### With known reference
+
++++
+
+To explain the idea of neural estimation, consider the problem of estimating the KL divergence with a known reference, i.e., $P_{\R{Z}}$ is unknown but $P_{\R{Z}'}$ is known.
+
++++
+
+---
+**Proposition**
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) & =  \sup_{Q\in \mc{P}(\mc{Z})} E \left[ \log \frac{dQ(\R{Z})}{dP_{\R{Z}'}(\R{Z})} \right] 
+\end{align}
+$$ (D1)
+
+where the optimal solution is $Q=P_{\R{Z}}$.
+
+---
+
++++
+
+---
+
+**Proof**
+ 
+$$
+\begin{align*}
+D(P_{\R{Z}}\|P_{\R{Z}'})  &= D(P_{\R{Z}}\|P_{\R{Z}'}) - \inf_{Q\in \mc{P}(\mc{Z})} \underbrace{D(P_{\R{Z}}\|Q)}_{\geq 0 \text{ with equality iff } Q=P_{\R{Z}}\kern-3em} \\
+&= \sup_{Q\in \mc{P}(\mc{Z})}  \underbrace{D(P_{\R{Z}}\|P_{\R{Z}'})}_{=E \left[\frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}\right]} -  \underbrace{D(P_{\R{Z}}\|Q)}_{=E \left[\frac{dP_{\R{Z}}(\R{Z})}{dQ(\R{Z})}\right]}\\
+&= \sup_{Q\in \mc{P}(\mc{Z})} E \left[\frac{dQ(\R{Z})}{dP_{\R{Z}'}(\R{Z})}\right]
+\end{align*}
+$$
+
+---
+
++++
+
+The idea of neural estimation is to 
+
+- estimate the expectation by the sample average  
+
+$$
+\frac1n \sum_{i\in [n]}\frac{dQ(\R{Z}_i)}{dP_{\R{Z}'}(\R{Z}_i)},
+$$
+
++++
+
+- use a neural network to compute $Q(z)$, and train the network to maximizes the expectation, e.g., by gradient ascent on the above sample average. 
+
++++
+
+Since both $P_{\R{Z}'}$ and $Q$ are known, the sample average above is a valid estimation of the divergence.
+
++++
+
+Let 
+
+$$
+p_{\R{Z}} := \frac{dP_{\R{Z}}}{d_{\mu}} \in \mc{P}_{\mu}(\mc{Z})
+$$ 
+
+be the probability density function of $P_{\R{Z}}$ defined w.r.t. an appropriate reference measure $\mu$. The proposition reduces to the cross-entropy upper bound on entropy:
+
++++
+
+---
+
+**Corollary** 
+
+$$
+\begin{align}
+H(\R{Z}) := E\left[ \log \frac{1}{p_{\R{Z}}(\R{Z})}\right] = \inf_{q\in \mc{P}_{\mu}(\mc{Z})} E\left[- \log q(\R{Z})\right]
+\end{align}
+$$ (H1)
+
+where the optimal $q$ satisfies $q(\R{Z})=p_{\R{Z}}(\R{Z})$ almost surely.
+
+
+---
+
++++
+
+### With unknown reference
+
++++
+
+Consider estimtating the KL divergence first. The idea of neural estimation can be explained with the following variational formula for KL divergence equivalent to the Donsker-Varadhan (DV) formula {cite}`donsker1983asymptotic`.
+
++++
+
+If $P_{\R{Z}'}$ is unknown, we can apply a change of variable
+
++++
+
+$$
+r(z) = \frac{dQ(z)}{dP_{\R{Z}'}(z)},
+$$ (Q->r)
+
++++
+
+which absorbs the unknown reference into the parameter.
+
++++
+
+---
+**Proposition**
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) & =  \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ E[r(\R{Z}')]=1}} E \left[ \log r(\R{Z}) \right] 
+\end{align}
+$$ (D1)
+
+where the optimal $r$ satisfies 
+$
+r(\R{Z}) = \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}
+$ 
+almost surely.
+
+---
+
++++
+
+It is easy to check that the optimal solution satisfies the constraint in the supremum {eq}`D1` and gives the KL divergence {eq}`D` as desired.
+
++++
+
+---
+
+**Proof**
+
+The constraint on $r$ is obtained from the constraint on $Q\in \mc{P}(\mc{Z})$, i.e., with $dQ(z)=r(z)dP_{\R{Z}'}(z)$, 
+
+$$
+\begin{align*}
+dQ(z) \geq 0 &\iff r(z)\geq 0\\
+\int_{\mc{Z}}dQ(z)=1 &\iff E[r(\R{Z}')]=1.
+\end{align*}
+$$
+
+{eq}`D1:sol` is from the additional optimality condition $Q=P_{\R{Z}}$ that
+
+$$
+dQ(z) = dP_{\R{Z}}(z) \iff r(z)  = \frac{dP_{\R{Z}}(z)}{dP_{\R{Z}'}(z)}.
+$$
+
+---
+
++++
+
+Once again, a neural network can be trained to approximate it by gradient descent on the lower bound of the divergence.
+
++++
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ \frac1{n'}\sum_{i\in [n']} r(\R{Z}'_i)]=1}} \frac1n \sum_{i\in [n]} \log r(\R{Z})
+\end{align}
+$$ (avg-D1)
+
++++
+
+Two questions remain: 
+
+1) How to impose the constraint on $r$ when training a neural network? 
+2) How accurate is the approximation, e.g, does the equality hold as $n\to \infty$?
+
++++
+
+The first question can be addressed by a simple change of variable
+
+$$
+\begin{align}
+r(z)&=\frac{e^{g(z)}}{E[e^{g(\R{Z}')}]}
+\end{align}
+$$ (r->g)
+
+which satisfies the constraint automatically for any function $g:\mc{Z}\to \mathbb{R}$. Substituting {eq}`r->g` gives the well-known Donsker-Varadhan formula:
+
++++
+
+---
+**Corollary** [{cite}`donsker1983asymptotic`]
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{g: \mc{Z} \to \mathbb{R}} E[g(\R{Z})] - \log E[e^{g(\R{Z}')}]
+\end{align}
+$$ (DV)
+
+where the optimal $g$ satisfies
+$$
+\begin{align}
+g(\R{Z}) = \log \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})} + c
+\end{align}
+$$ (DV:sol)
+
+almost surely for some constant $c$.
+
+---
 
 +++
 
@@ -238,7 +447,7 @@ Estimating MI well neither require nor imply the divergence/density to be estima
 
 +++
 
-One way is to obtain MI {eq}`MI` from the KL divergence {eq}`D` as follows:
+One way is to obtain MI {eq}`MI` from KL divergence {eq}`D` as follows:
 
 +++
 
@@ -442,132 +651,6 @@ I(\R{X}\wedge \R{Y}) &= E\left[\log \frac{P_{\R{Y}|\R{X}}(\R{Y}|\R{X})}{P_{\R{Y}
 =: E\left[D(P_{\R{Y}|\R{X}}\|P_{\R{Y}}|P_{\R{X}})\right]
 \end{align*}
 $$
-
-+++
-
-## Neural estimation of KL divergence
-
-+++
-
-Consider estimtating the KL divergence first. The idea of neural estimation can be explained with the following variational formula for KL divergence equivalent to the Donsker-Varadhan (DV) formula {cite}`donsker1983asymptotic`.
-
-+++
-
----
-**Proposition**
-
-$$
-\begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) & =  \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ E[r(\R{Z}')]=1}} E \left[ \log r(\R{Z}) \right] 
-\end{align}
-$$ (D1)
-
-where the optimal $r$ satisfies
-
-$$
-\begin{align}
-r(\R{Z}) = \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}
-\end{align}
-$$ (D1:sol)
-
-almost surely.
-
----
-
-+++
-
-It is easy to check that the optimal solution {eq}`D1:sol` satisfies the constraint in the supremum {eq}`D1` and gives the KL divergence {eq}`D` as desired.
-
-+++
-
-The proposition states further that $E[\log r(\R{Z})]$ for any feasible density ratio $r$ is a lower bound on the divergence.
-
-+++
-
----
-**Proof**
- 
-$$
-\begin{align*}
-D(P_{\R{Z}}\|P_{\R{Z}'})  &= D(P_{\R{Z}}\|P_{\R{Z}'}) - \inf_{Q\in \mc{P}(\mc{Z})} \underbrace{D(P_{\R{Z}}\|Q)}_{\geq 0 \text{ with equality iff } Q=P_{\R{Z}}\kern-3em} \\
-&= \sup_{Q\in \mc{P}(\mc{Z})}  \underbrace{D(P_{\R{Z}}\|P_{\R{Z}'})}_{=E \left[\frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}\right]} -  \underbrace{D(P_{\R{Z}}\|Q)}_{=E \left[\frac{dP_{\R{Z}}(\R{Z})}{dQ(\R{Z})}\right]}\\
-&= \sup_{Q\in \mc{P}(\mc{Z})} E \left[\frac{dQ(\R{Z})}{dP_{\R{Z}'}(\R{Z})}\right]
-\end{align*}
-$$
-
-which gives {eq}`D1` by a change of variable $r(z) = \frac{dQ(z)}{dP_{\R{Z}'}(z)}$. 
-
-+++
-
-The constraint on $r$ is obtained from the constraint on $Q\in \mc{P}(\mc{Z})$, i.e., with $dQ(z)=r(z)dP_{\R{Z}'}(z)$, 
-
-$$
-\begin{align*}
-dQ(z) \geq 0 &\iff r(z)\geq 0\\
-\int_{\mc{Z}}dQ(z)=1 &\iff E[r(\R{Z}')]=1.
-\end{align*}
-$$
-
-{eq}`D1:sol` is from the additional optimality condition $Q=P_{\R{Z}}$ that
-
-$$
-dQ(z) = dP_{\R{Z}}(z) \iff r(z)  = \frac{dP_{\R{Z}}(z)}{dP_{\R{Z}'}(z)}.
-$$
-
----
-
-+++
-
-The idea of neural estimation is to use the sample average {eq}`avg-f-D` to estimate the divergence. Since the density ratio {eq}`dP:ratio` is not known, a neural network can be trained to approximate it by gradient descent on the lower bound of the divergence.
-
-+++
-
-$$
-\begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ \frac1{n'}\sum_{i\in [n']} r(\R{Z}'_i)]=1}} \frac1n \sum_{i\in [n]} \log r(\R{Z})
-\end{align}
-$$ (avg-D1)
-
-+++
-
-Two questions remain: 
-
-1) How to impose the constraint on $r$ when training a neural network? 
-2) How accurate is the approximation, e.g, does the equality hold as $n\to \infty$?
-
-+++
-
-The first question can be addressed by a simple change of variable
-
-$$
-\begin{align}
-r(z)&=\frac{e^{g(z)}}{E[e^{g(\R{Z}')}]}
-\end{align}
-$$ (r->g)
-
-which satisfies the constraint automatically for any function $g:\mc{Z}\to \mathbb{R}$. Substituting {eq}`r->g` gives the well-known Donsker-Varadhan formula:
-
-+++
-
----
-**Corollary** [{cite}`donsker1983asymptotic`]
-
-$$
-\begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{g: \mc{Z} \to \mathbb{R}} E[g(\R{Z})] - \log E[e^{g(\R{Z}')}]
-\end{align}
-$$ (DV)
-
-where the optimal $g$ satisfies
-$$
-\begin{align}
-g(\R{Z}) = \log \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})} + c
-\end{align}
-$$ (DV:sol)
-
-almost surely for some constant $c$.
-
----
 
 +++
 
