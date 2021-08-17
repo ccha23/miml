@@ -160,6 +160,7 @@ $$ (f-D)
 +++
 
 $f$-divergence in {eq}`f-D` reduces to KL divergence when $f=u \log u$:
+
 $$
 \begin{align}
 E\left[ \frac{d P_{\R{Z}}(\R{Z}')}{d P_{\R{Z}'}(\R{Z}')} \log \frac{d P_{\R{Z}}(\R{Z}')}{d P_{\R{Z}'}(\R{Z}')}  \right] &= \int_{\mc{Z}} \color{gray}{d P_{\R{Z}'}(z)} \cdot \frac{d P_{\R{Z}}(z)}{\color{gray}{d P_{\R{Z}'}(z)}} \log \frac{d P_{\R{Z}}(z)}{d P_{\R{Z}'}(z)}. 
@@ -193,6 +194,7 @@ with equality iff $P_{\R{Z}}=P_{\R{Z}'}$.
 +++
 
 Regarding the divergence as an expectation, it is approximated by the sample average:
+
 $$
 \begin{align}
 D_f(P_{\R{Z}}\|P_{\R{Z}'}) &\approx 
@@ -216,13 +218,13 @@ $$ (dP-ratio)
 
 +++
 
-or estimate the density
+or estimate the density defined respective to some reference measure $\mu$:
 
 $$
 \begin{align}
-p_{\R{Z}}&:=\frac{dP_{\R{Z}}(z)}{dz}.
+p_{\R{Z}}&:=\frac{dP_{\R{Z}}}{d\mu} \in \mc{P}_{\mu}(\mc{Z}).
 \end{align}
-$$ (pdf/pmf)
+$$ (density)
 
 +++
 
@@ -232,7 +234,7 @@ $$ (pdf/pmf)
 
 Estimating MI well neither require nor imply the divergence/density to be estimated well. However, MI estimation is often not the end goal, but an objective to train a neural network to return the divergence/density. The features/representations learned by the neural network may be applicable to different downstream inference tasks.
 
-+++
++++ {"tags": []}
 
 ### With known reference
 
@@ -257,10 +259,16 @@ where the optimal solution is $Q=P_{\R{Z}}$.
 
 +++
 
+It is easy to check that the optimal solution gives the KL divergence formula in {eq}`D`. The proposition essentially gives a tight lower bound on KL divergence maximized by the unknown distribution. 
+
++++
+
 ---
 
 **Proof**
- 
+
+To prove {eq}`D1`,
+
 $$
 \begin{align*}
 D(P_{\R{Z}}\|P_{\R{Z}'})  &= D(P_{\R{Z}}\|P_{\R{Z}'}) - \inf_{Q\in \mc{P}(\mc{Z})} \underbrace{D(P_{\R{Z}}\|Q)}_{\geq 0 \text{ with equality iff } Q=P_{\R{Z}}\kern-3em} \\
@@ -275,15 +283,15 @@ $$
 
 The idea of neural estimation is to 
 
-- estimate the expectation by the sample average  
+- estimate the expectation in {eq}`D1` by the sample average  
 
 $$
-\frac1n \sum_{i\in [n]}\frac{dQ(\R{Z}_i)}{dP_{\R{Z}'}(\R{Z}_i)},
+\frac1n \sum_{i\in [n]} \log \underbrace{\frac{dQ(\R{Z}_i)}{dP_{\R{Z}'}(\R{Z}_i)}}_{\text{(*)}},
 $$
 
 +++
 
-- use a neural network to compute $Q(z)$, and train the network to maximizes the expectation, e.g., by gradient ascent on the above sample average. 
+- use a neural network to compute the density ratio (*), and train the network to maximizes the expectation, e.g., by gradient ascent on the above sample average. 
 
 +++
 
@@ -291,13 +299,11 @@ Since both $P_{\R{Z}'}$ and $Q$ are known, the sample average above is a valid e
 
 +++
 
-Let 
+**But how to use a neural network to compute the density ratio?**
 
-$$
-p_{\R{Z}} := \frac{dP_{\R{Z}}}{d_{\mu}} \in \mc{P}_{\mu}(\mc{Z})
-$$ 
++++
 
-be the probability density function of $P_{\R{Z}}$ defined w.r.t. an appropriate reference measure $\mu$. The proposition reduces to the cross-entropy upper bound on entropy:
+Note that the proposition reduces to the cross-entropy upper bound on entropy:
 
 +++
 
@@ -311,10 +317,75 @@ H(\R{Z}) := E\left[ \log \frac{1}{p_{\R{Z}}(\R{Z})}\right] = \inf_{q\in \mc{P}_{
 \end{align}
 $$ (H1)
 
-where the optimal $q$ satisfies $q(\R{Z})=p_{\R{Z}}(\R{Z})$ almost surely.
+where the optimal $q$ satisfies $q(\R{Z})=p_{\R{Z}}(\R{Z})$ in {eq}`density` almost surely.
 
 
 ---
+
++++
+
+---
+
+**Proof**
+ 
+{eq}`H1` follows from {eq}`D1` by rewriting the density ratios in {eq}`D` and {eq}`D1` as follows:
+
+$$
+\begin{align*}
+\frac{dP_{\R{Z}}}{dP_{\R{Z}'}} &= \frac{p_{\R{Z}}}{p_{\R{Z}'}}\\
+\frac{dQ_{\R{Z}}}{dP_{\R{Z}'}} &= \frac{q}{p_{\R{Z}'}}.
+\end{align*}
+$$
+
+---
+
++++
+
+KL divergence can be estimated using an entropy estimate as follows 
+
+$$
+\begin{align}
+D(P_{\R{Z}}\| P_{\R{Z}'})= E\left[-\log p_{\R{Z}'}(\R{Z})\right] - H(\R{Z}) 
+\end{align}
+$$ (D->H)
+
+and the expectation above can be approximated by the sample average $\frac1n \sum_{i\in [n]} \log p_{\R{Z}'}(\R{Z}_i)$ since $p_{\R{Z}'}$ is known.
+
++++
+
+**How to estimate the entropy?**
+
++++
+
+Suppose $\R{Z}$ is discrete. We can apply the following change of variable to {eq}`H1` that
+
+$$
+q(z) = \frac{e^{t_z}}{\sum_{z\in \mc{Z}} e^{t_z}} \quad \text{for }z\in \mc{Z},
+$$
+
++++
+
+called the *soft-max* layer, and optimize a neural network that has no input but returns a vector 
+
+$$\M{t}:=\begin{bmatrix} t_z\end{bmatrix}_{z\in \mc{Z}} \in \mathbb{R}^{\mc{Z}},$$
+
+called the *logits*.
+
++++
+
+**What if $\R{Z}$ is continuous?**
+
++++
+
+We can apply the following change of variable instead
+
+$$
+q(z) := \frac{e^{t(z)}p_{\R{Z}'}(z)}{ E\left[e^{t(\R{Z}')}\right]} \quad \text{for }z\in \mc{Z},
+$$
+
++++
+
+which must be in $\mc{P}_{\mu}(\mc{Z})$ (why?) for all real-valued function $t:\mc{Z}\to \mathbb{R}$. The neural network can take input $z$ and returns output $t(z)$.
 
 +++
 
@@ -353,19 +424,17 @@ where the optimal $r$ satisfies
 $
 r(\R{Z}) = \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}
 $ 
-almost surely.
+almost surely, i.e., it approximates the density ratio {eq}`dP-ratio`.
 
 ---
 
 +++
 
-It is easy to check that the optimal solution satisfies the constraint in the supremum {eq}`D1` and gives the KL divergence {eq}`D` as desired.
-
-+++
-
 ---
 
-**Proof**
+**Exercise** Show using {eq}`Q->r` that the optimal solution satisfies the constraint stated in the supremum {eq}`D1`.
+
++++
 
 The constraint on $r$ is obtained from the constraint on $Q\in \mc{P}(\mc{Z})$, i.e., with $dQ(z)=r(z)dP_{\R{Z}'}(z)$, 
 
@@ -382,11 +451,13 @@ $$
 dQ(z) = dP_{\R{Z}}(z) \iff r(z)  = \frac{dP_{\R{Z}}(z)}{dP_{\R{Z}'}(z)}.
 $$
 
++++
+
 ---
 
 +++
 
-Once again, a neural network can be trained to approximate it by gradient descent on the lower bound of the divergence.
+A neural network can be trained to approximate it by gradient descent on the lower bound of the divergence.
 
 +++
 
