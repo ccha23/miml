@@ -259,7 +259,7 @@ where the optimal solution is $Q=P_{\R{Z}}$.
 
 +++
 
-It is easy to check that the optimal solution gives the KL divergence formula in {eq}`D`. The proposition essentially gives a tight lower bound on KL divergence maximized by the unknown distribution. 
+It is easy to check that the optimal solution gives the KL divergence formula in {eq}`D`. The proposition essentially gives a tight lower bound on KL divergence maximized by the unknown distribution.
 
 +++
 
@@ -291,7 +291,7 @@ $$
 
 +++
 
-- use a neural network to compute the density ratio (*), and train the network to maximizes the expectation, e.g., by gradient ascent on the above sample average. 
+- use a neural network to compute the density ratio (*), and train the network to maximizes the expectation, e.g., by gradient ascent on the above sample average.
 
 +++
 
@@ -360,14 +360,14 @@ and the expectation above can be approximated by the sample average $\frac1n \su
 Suppose $\R{Z}$ is discrete. We can apply the following change of variable to {eq}`H1` that
 
 $$
-q(z) = \frac{e^{t_z}}{\sum_{z\in \mc{Z}} e^{t_z}} \quad \text{for }z\in \mc{Z},
+q(z) = \frac{e^{g_z}}{\sum_{z\in \mc{Z}} e^{g_z}} \quad \text{for }z\in \mc{Z},
 $$
 
 +++
 
 called the *soft-max* layer, and optimize a neural network that has no input but returns a vector 
 
-$$\M{t}:=\begin{bmatrix} t_z\end{bmatrix}_{z\in \mc{Z}} \in \mathbb{R}^{\mc{Z}},$$
+$$\M{t}:=\begin{bmatrix} g_z\end{bmatrix}_{z\in \mc{Z}} \in \mathbb{R}^{\mc{Z}},$$
 
 called the *logits*.
 
