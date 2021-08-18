@@ -143,6 +143,21 @@ using
 
 ---
 
++++ {"slideshow": {"slide_type": "fragment"}, "tags": []}
+
+---
+**Exercise** 
+
+Although $\R{X}^n$ and $\R{Y}^n$ for MI estimation should have the same length, $\R{Z}^n$ and ${\R{Z}'}^{n'}$ can have different lengths, i.e., $n \not\equiv n'$. Why?
+
++++ {"tags": ["hide-cell"], "slideshow": {"slide_type": "fragment"}}
+
+**Solution** The dependency between $\R{Z}$ and $\R{Z}'$ does not affect the divergence.
+
++++
+
+---
+
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
 Regarding the mutual information as a divergence from joint to product distributions, the problem can be further generalized to estimtate other divergences such as the $f$-divergence:
@@ -360,8 +375,8 @@ and the expectation above can be approximated by the sample average $\frac1n \su
 Suppose $\R{Z}$ is discrete. We can apply the following change of variable to {eq}`H1` that
 
 $$
-q(z) = \frac{e^{g_z}}{\sum_{z\in \mc{Z}} e^{g_z}} \quad \text{for }z\in \mc{Z},
-$$
+q(z) = \frac{e^{t_z}}{\sum_{z\in \mc{Z}} e^{t_z}} \quad \text{for }z\in \mc{Z},
+$$ (q->t_z)
 
 +++
 
@@ -373,6 +388,10 @@ called the *logits*.
 
 +++
 
+![Discrete](nn_discrete.dio.svg)
+
++++
+
 **What if $\R{Z}$ is continuous?**
 
 +++
@@ -381,19 +400,34 @@ We can apply the following change of variable instead
 
 $$
 q(z) := \frac{e^{t(z)}p_{\R{Z}'}(z)}{ E\left[e^{t(\R{Z}')}\right]} \quad \text{for }z\in \mc{Z},
+$$ (q->t)
+
++++
+
+which must be in $\mc{P}_{\mu}(\mc{Z})$ for all real-valued function $t:\mc{Z}\to \mathbb{R}$, namely, $q(z)\geq 0$ and
+
+$$
+\begin{align}
+\int_{\mc{Z}} q \,d\mu = \frac{\int_{z\in \mc{Z}}  e^{t(z)}p_{\R{Z}'}(z) d\mu(z)}{ E\left[e^{t(\R{Z}')}\right]}    = 1.
+\end{align}
 $$
 
 +++
 
-which must be in $\mc{P}_{\mu}(\mc{Z})$ (why?) for all real-valued function $t:\mc{Z}\to \mathbb{R}$. The neural network can take input $z$ and returns output $t(z)$.
+The neural network can take input $z$ and returns output $t(z)$.
+
++++
+
+**Exercise** How should the neural network compute $q$ if $\R{Z}=(\R{Z}_{\text{d}},\R{Z}_{\text{c}})$ has both a continuous component $\R{Z}_{\text{c}}$ and a discrete component $\R{Z}_{\text{d}}$?
+
++++
+
+**Solution** The neural network can take the continuous component $z_{\text{c}}$
+as input and return the vector $\M{t}(z_{\text{c}}) = \begin{bmatrix} t_{z_{\text{d}}}(z_{\text{c}}) \end{bmatrix}_{z_{\text{d}}}$.
 
 +++
 
 ### With unknown reference
-
-+++
-
-Consider estimtating the KL divergence first. The idea of neural estimation can be explained with the following variational formula for KL divergence equivalent to the Donsker-Varadhan (DV) formula {cite}`donsker1983asymptotic`.
 
 +++
 
@@ -422,9 +456,8 @@ $$ (D1)
 
 where the optimal $r$ satisfies 
 $
-r(\R{Z}) = \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}
+r(\R{Z}) = \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}.
 $ 
-almost surely, i.e., it approximates the density ratio {eq}`dP-ratio`.
 
 ---
 
@@ -445,46 +478,53 @@ dQ(z) \geq 0 &\iff r(z)\geq 0\\
 \end{align*}
 $$
 
-{eq}`D1:sol` is from the additional optimality condition $Q=P_{\R{Z}}$ that
-
-$$
-dQ(z) = dP_{\R{Z}}(z) \iff r(z)  = \frac{dP_{\R{Z}}(z)}{dP_{\R{Z}'}(z)}.
-$$
-
 +++
 
 ---
 
 +++
 
-A neural network can be trained to approximate it by gradient descent on the lower bound of the divergence.
+The next step is to train a neural network that computes $r$. What about?
 
 +++
 
 $$
 \begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ \frac1{n'}\sum_{i\in [n']} r(\R{Z}'_i)]=1}} \frac1n \sum_{i\in [n]} \log r(\R{Z})
+D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ \frac1{n'}\sum_{i\in [n']} r(\R{Z}'_i)]=1}} \frac1n \sum_{i\in [n]} \log r(\R{Z}_i)
 \end{align}
 $$ (avg-D1)
 
 +++
 
-Two questions remain: 
-
-1) How to impose the constraint on $r$ when training a neural network? 
-2) How accurate is the approximation, e.g, does the equality hold as $n\to \infty$?
+**How to impose the constraint on $r$ when training a neural network?**
 
 +++
 
-The first question can be addressed by a simple change of variable
+We can apply by a change of variable similar to {eq}`q->t`:
 
 $$
 \begin{align}
-r(z)&=\frac{e^{g(z)}}{E[e^{g(\R{Z}')}]}
+r(z)&=\frac{e^{g(z)}}{E[e^{g(\R{Z}')}]}.
 \end{align}
 $$ (r->g)
 
-which satisfies the constraint automatically for any function $g:\mc{Z}\to \mathbb{R}$. Substituting {eq}`r->g` gives the well-known Donsker-Varadhan formula:
++++
+
+**Exercise** Show that $r$ defined in {eq}`r->g` satisfies the constraint in {eq}`D1` for all real-valued function $g:\mc{Z}\to \mathbb{R}$.
+
++++
+
+**Proof** 
+
+$$
+\begin{align}
+E\left[ \frac{e^{g(\R{Z}')}}{E[e^{g(\R{Z}')}]} \right] =  \frac{E\left[ e^{g(\R{Z}')} \right]}{E[e^{g(\R{Z}')}]} = 1.
+\end{align}
+$$
+
++++
+
+Substituting {eq}`r->g` gives the well-known *Donsker-Varadhan (DV)* formula:
 
 +++
 
@@ -510,6 +550,18 @@ almost surely for some constant $c$.
 
 +++
 
+The divergence can be estimated as follows instead of {eq}`avg-D1`: 
+
++++
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{g: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} g(\R{Z}_i) - \frac1{n'}\sum_{i\in [n']} e^{g(\R{Z}'_i)}
+\end{align}
+$$ (avg-DV)
+
++++
+
 ## MI estimation via KL divergence
 
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
@@ -528,20 +580,9 @@ I(\R{X}\wedge \R{Y}) = D(\underbrace{P_{\R{X},\R{Y}}}_{P_{\R{Z}}}\| \underbrace{
 \end{align*}
 $$
 
-+++ {"slideshow": {"slide_type": "fragment"}, "tags": []}
-
----
-**Exercise** 
-
-Although $\R{X}^n$ and $\R{Y}^n$ for MI estimation should have the same length, $\R{Z}^n$ and ${\R{Z}'}^{n'}$ can have different lengths, i.e., $n \not\equiv n'$. Why?
-
-+++ {"tags": ["hide-cell"], "slideshow": {"slide_type": "fragment"}}
-
-**Solution** The dependency between $\R{Z}$ and $\R{Z}'$ does not affect the divergence.
-
 +++
 
----
+Since both $P_{\R{Z}}$ and $P_{\R{Z}'}$ are unknown, we can apply {eq}`avg-DV` to estimate the divergence.
 
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
@@ -549,13 +590,13 @@ Although $\R{X}^n$ and $\R{Y}^n$ for MI estimation should have the same length, 
 
 +++ {"slideshow": {"slide_type": "fragment"}, "tags": []}
 
-One way is to use the resampling trick to approximate the i.i.d. sampling of $P_{\R{X}}\times P_{\R{Y}}$ using samples from $P_{\R{X}\R{Y}}$:
+We can approximate the i.i.d. sampling of $P_{\R{X}}\times P_{\R{Y}}$ using samples from $P_{\R{X}\R{Y}}$ by a re-sampling trick:
 
 $$
 \begin{align}
 P_{\R{Z}'^{n'}} &\approx P_{((\R{X}_{\R{J}_i},\R{Y}_{\R{K}_i})\mid i \in [n'])}
 \end{align}
-$$
+$$ (resample)
 
 where $\R{J}_i$ and $\R{K}_i$ for $i\in [n']$ are independent and uniformly random indices
 
@@ -567,7 +608,7 @@ and $[n]:=\Set{1,\dots,n}$.
 
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
-Mutual Information Neural Estimation (MINE) {cite}`belghazi2018mine` uses the following implementation that samples $(\R{J},\R{K})$ but without replacement. You may change $n'$ using the slider for `n_`.
+*Mutual Information Neural Estimation (MINE)* {cite}`belghazi2018mine` uses the following implementation that samples $(\R{J},\R{K})$ but without replacement. You can change $n'$ using the slider for `n_`.
 
 ```{code-cell} ipython3
 def resample(XY, size, replace=False):
@@ -649,19 +690,11 @@ i.e., any event of $\mc{X}\times \mc{Y}$ probable w.r.t. $P_{\R{X},\R{Y}}$ is al
 
 +++
 
-Mutual Information Neural Entropic Estimation (MI-NEE) {cite}`chan2019neural` uses {eq}`MI-E` to estimate MI by estimating the three divergences. $P_{\R{X}'}$ and $P_{\R{Y}'}$ are known distributions and so arbitrarily many i.i.d. samples can be drawn from them directly without using the resampling trick.
-
-+++
-
 {eq}`finite-D` is a mild condition to ensure that the divergences are finite.
 
 +++
 
 ---
-
-**Exercise** Prove the above proposition.
-
-+++
 
 **Proof**
 
@@ -676,6 +709,10 @@ I(\R{X}\wedge \R{Y}) &= H(\R{X}) + H(\R{Y}) - H(\R{X},\R{Y})\\
 $$
 
 ---
+
++++
+
+*Mutual Information Neural Entropic Estimation (MI-NEE)* {cite}`chan2019neural` uses {eq}`MI-E` to estimate MI by estimating the three divergences. $P_{\R{X}'}$ and $P_{\R{Y}'}$ are known distributions and so arbitrarily many i.i.d. samples can be drawn from them directly without using the resampling trick {eq}`resample`.
 
 +++
 
