@@ -7,9 +7,9 @@ jupytext:
     format_version: 0.13
     jupytext_version: 1.11.4
 kernelspec:
-  display_name: Python 3 (ipykernel)
+  display_name: Python 3.8 (XPython)
   language: python
-  name: python3
+  name: xpython
 ---
 
 +++ {"slideshow": {"slide_type": "slide"}}
@@ -28,7 +28,7 @@ $\def\abs#1{\left\lvert #1 \right\rvert}
 \def\E{\op{E}}
 \def\d{\mathrm{\mathstrut d}}$
 
-```{code-cell} ipython3
+```{code-cell}
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 import numpy as np
@@ -74,7 +74,7 @@ $$ (MI)
 
 **Exercise** Run the following code cell a couple of times to see different distributions of samples of $(\R{X},\R{Y})$. What is unknown about the sampling distribution?
 
-```{code-cell} ipython3
+```{code-cell}
 ---
 slideshow:
   slide_type: fragment
@@ -387,8 +387,8 @@ called the *logits*.
 We can apply the following change of variable instead
 
 $$
-q(z) := \frac{e^{t(z)}}{ \int_{\mc{Z}} t\,d\mu } \quad \text{for }z\in \op{supp}(p_{\R{Z}}):=\Set{z\in \mc{Z}\mid p_{\R{Z}}>0}.
-$$ 
+q(z) := \frac{e^{t(z)}}{ \underbrace{\int_{\mc{Z}} t\,d\mu}_{c:=} } \quad \text{for }z\in \op{supp}(p_{\R{Z}}):=\Set{z\in \mc{Z}\mid p_{\R{Z}}>0}.
+$$ (q->t:1)
 
 +++
 
@@ -400,55 +400,133 @@ The neural network can take input $z$ and returns output $t(z)$.
 
 +++
 
-**But how to compute the normalization factor $\int_{\mc{Z}} t\,d\mu$?**
+**But how to compute the normalization factor $c$ in {eq}`q->t:1`?**
 
 +++
 
-We can apply a trick from importance sampling
+We can apply importance sampling. 
+
++++
+
+Consider any distribution $P_{\R{Z}''}\in \mc{P}(\mc{Z})$ such that
+
+$$
+P_{\R{Z}''}\succeq P_{\R{Z}},
+$$ (Porder)
+
+which means that any event $\mc{Z}$ is probable w.r.t. $P_{\R{Z}}$ is also probable w.r.t. $P_{\R{Z}''}$, or equivalently,
+
+$$
+\op{supp}(p_{\R{Z}''})\supseteq \op{supp}(p_{\R{Z}}).
+$$
+
++++
+
+The desired integral can then be turned into an expectation:
+
++++
 
 $$
 \begin{align}
-\int_{\mc{Z}} t\,d\mu &= \int_{\mc{Z}} \frac{t}{p_{\R{Z}'}} p_{\R{Z}'}\,d\mu \\
-& = E\left[ \frac{t(\R{Z}')}{p_{\R{Z}'}(\R{Z}')} \right]\\
-&\approx \frac{1}{n'}\sum_{i\in [n']} \frac{t(\R{Z}'_i)}{p_{\R{Z}'}(\R{Z}'_i)},
+\int_{\mc{Z}} t\,d\mu &= \int_{\mc{Z}} \frac{t}{p_{\R{Z}''}} p_{\R{Z}''}\,d\mu \\
+& = E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right].
 \end{align}
 $$ (int->avg)
 
-which turns the integration into an expectation that can then be approximated by i.i.d. samples ${\R{Z}'}^{n'}$ of $\R{Z}'$.
++++
+
+---
+**Proposition** 
+
+$$
+\begin{align}
+H(\R{Z}) &=  - \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] + \log E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right]
+\end{align}
+$$ (H2)
+
+where the optimal $t$ satisfies $t(\R{Z}) = \log p_{\R{Z}}(\R{Z}) + c$
+almost surely for some constant $c\in \mathbb{R}$.
+
+---
+
++++
+
+Applying {eq}`H2` to {eq}`D->H` gives:
 
 +++
 
 ---
-
-**Exercise** The first equality in {eq}`int->avg) requires 
-
-$$
-\op{supp}(p_{\R{Z}'})\supseteq \op{supp}(p_{\R{Z}}),
-$$ (Porder)
-
-denoted as $P_{\R{Z}'}\succeq P_{\R{Z}}$, i.e., any event of $\mc{X}\times \mc{Y}$ probable w.r.t. $P_{\R{X},\R{Y}}$ is also probable w.r.t. $P_{\R{X}'}\times P_{\R{Y}'}$. Show that this condition holds iff $D(P_{\R{Z}}\| P_{\R{Z}'})<\infty$.
-
-+++
-
-**Solution** By definitions {eq}`D` and {eq}`density`,
+**Corollary** 
 
 $$
-D(P_{\R{Z}}\|P_{\R{Z}'}) = E\left[ \frac{p_{\R{Z}}(\R{Z})}{p_{\R{Z}'}(\R{Z})} \right]
-$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) &= E\left[-\log p_{\R{Z}'}(\R{Z})\right] +  \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] - \log E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right]
+\end{align}
+$$ (D2)
 
-which is bounded iff $\frac{p_{\R{Z}}(\R{Z})}{p_{\R{Z}'}(\R{Z})}$ is bounded almost surely, i.e., $p_{\R{Z}'}(\R{Z})>0$ almost surely. This happens iff {eq}`Porder` holds.
-
-+++
+where the optimal $t$ satisfies $t(\R{Z}) = \log p_{\R{Z}}(\R{Z}) + c$
+almost surely for some constant $c\in \mathbb{R}$.
 
 ---
+
++++
+
+
+
++++
+
+$$
+\begin{align}
+\int_{\mc{Z}} t\,d\mu &= \int_{\mc{Z}} \frac{t}{p_{\R{Z}}} p_{\R{Z}}\,d\mu \\
+& = E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right]\\
+&\approx \frac{1}{n''}\sum_{i\in [n'']} \frac{t(\R{Z}''_i)}{p_{\R{Z}''}(\R{Z}''_i)},
+\end{align}
+$$ (int->avg)
+
+which is the average of i.i.d. samples ${\R{Z}''}^{n''}$ of $\R{Z}''$.
 
 +++
 
 Altogether, we can apply the following change of variable assuming the non-degenerate case that {eq}`Porder` holds:
 
 $$
-q(z) := \frac{e^{t(z)}p_{\R{Z}'}(z)}{ E\left[e^{t(\R{Z}')}\right]} \quad \text{for }z\in \op{supp}(p_{\R{Z}}).
+q(z) := \frac{e^{t(z)}p_{\R{Z}''}(z)}{ E\left[e^{t(\R{Z}'')}\right]} \quad \text{for }z\in \op{supp}(p_{\R{Z}}).
 $$ (q->t)
+
++++
+
+---
+**Proposition**
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) & =  \sup_{Q\in \mc{P}(\mc{Z})} E \left[ \log \frac{dQ(\R{Z})}{dP_{\R{Z}'}(\R{Z})} \right] 
+\end{align}
+$$ (D1)
+
+where the optimal solution is $Q=P_{\R{Z}}$.
+
+---
+
++++
+
+---
+
+**Exercise** The first equality in {eq}`int->avg` requires the mild assumption {eq}`Porder`. Show that the assumption holds iff $D(P_{\R{Z}}\| P_{\R{Z}''})<\infty$.
+
++++
+
+**Solution** By definitions {eq}`D` and {eq}`density`,
+
+$$
+D(P_{\R{Z}}\|P_{\R{Z}''}) = E\left[ \frac{p_{\R{Z}}(\R{Z})}{p_{\R{Z}''}(\R{Z})} \right]
+$$
+
+which is bounded iff $\frac{p_{\R{Z}}(\R{Z})}{p_{\R{Z}''}(\R{Z})}$ is bounded almost surely, i.e., $p_{\R{Z}''}(\R{Z})>0$ almost surely. This happens iff {eq}`Porder` holds.
+
++++
+
+---
 
 +++
 
@@ -469,21 +547,29 @@ as input and return the vector $\M{t}(z_{\text{c}}) = \begin{bmatrix} t_{z_{\tex
 
 ---
 
-**Exercise** Indeed, {eq}`q->t_z` is a special case of {eq}`q->t` with a suitable choice of $P_{\R{Z}'}$. How?
+**Exercise** Indeed, {eq}`q->t_z` is a special case of {eq}`q->t` with a suitable choice of $P_{\R{Z}''}$. How?
 
 +++
 
-**Solution** {eq}`q->t_z` can be obtained from {eq}`q->t` by choosing $P_{\R{Z}'} = \op{Uniform}_{\mc{Z}}$, i.e., the uniform distribution of $\mc{Z}$:
+**Solution** {eq}`q->t_z` can be obtained from {eq}`q->t` by choosing $P_{\R{Z}''} = \op{Uniform}_{\mc{Z}}$, i.e., the uniform distribution of $\mc{Z}$:
 
 $$
 \begin{align*}
-\frac{e^{t(z)}\overbrace{p_{\R{Z}'}(z)}^{=1/k}}{ \underbrace{E\left[e^{t(\R{Z}')}\right]}_{=\frac1k \sum_{i\in [k]} e^{t(z_i)}}} \quad \text{where } k=\abs{Z}.
+\frac{e^{t(z)}\overbrace{p_{\R{Z}''}(z)}^{=1/k}}{ \underbrace{E\left[e^{t(\R{Z}'')}\right]}_{=\frac1k \sum_{i\in [k]} e^{t(z_i)}}} \quad \text{where } k=\abs{Z}.
 \end{align*}
 $$
 
 +++
 
 ---
+
++++
+
+**How good is the sample average estimate for the normalization factor?**
+
++++
+
+Following the idea of importance sampling, the variance of the sample average estimate in {eq}`int->avg` can be minimized to $0$ by choosing $p_{\R{Z}''}$ proportional to $e^{t}$.
 
 +++
 
@@ -597,7 +683,7 @@ D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] - \log E
 \end{align}
 $$ (DV)
 
-where the optimal $g$ satisfies
+where the optimal $t$ satisfies
 $$
 \begin{align}
 t(\R{Z}) = \log \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})} + c
@@ -680,7 +766,7 @@ and $[n]:=\Set{1,\dots,n}$.
 
 MINE {cite}`belghazi2018mine` uses the following implementation that samples $(\R{J},\R{K})$ but without replacement. You can change $n'$ using the slider for `n_`.
 
-```{code-cell} ipython3
+```{code-cell}
 def resample(XY, size, replace=False):
     index = rng.choice(range(XY.shape[0]), size=size, replace=replace)
     return XY[index]
@@ -696,7 +782,7 @@ def plot_resampled_data_without_replacement(n_=(2, n)):
 
 **Exercise** To allow $n>n'$, we need to sample the index with replacement. Complete the following code and observe what happens when $n \gg n'$
 
-```{code-cell} ipython3
+```{code-cell}
 :tags: []
 
 @widgets.interact
@@ -746,21 +832,10 @@ I(\R{X}\wedge \R{Y}) &= D(P_{\R{X},\R{Y}}\|P_{\R{X}'}\times P_{\R{Y}'}) - D(P_{\
 \end{align}
 $$ (MI-E)
 
-for $P_{\R{X}'}\times P_{\R{Y}'}$, called the (product) reference distribution, satisfying 
-
-$$
-\begin{align}
-P_{\R{X}'}\times P_{\R{Y}'} \succeq P_{\R{X},\R{Y}},
-\end{align}
-$$ (finite-D)
-
-i.e., any event of $\mc{X}\times \mc{Y}$ probable w.r.t. $P_{\R{X},\R{Y}}$ is also probable w.r.t. $P_{\R{X}'}\times P_{\R{Y}'}$.
+for $P_{\R{X}'}\times P_{\R{Y}'}$, called the (product) reference distribution, satisfying {eq}`Porder`
+$P_{\R{X}'}\times P_{\R{Y}'} \succeq P_{\R{X},\R{Y}}$ to ensure that the divergences are finite.
 
 ---
-
-+++
-
-{eq}`finite-D` is a mild condition to ensure that the divergences are finite.
 
 +++
 
@@ -804,6 +879,10 @@ $P_{\R{X}'}$ and $P_{\R{Y}'}$ are known distributions and so arbitrarily many i.
 
 +++
 
+Furthermore, the the dis
+
++++
+
 Indeed, one need only a generator for the reference samples:
 
 $$
@@ -836,7 +915,7 @@ removing from the {eq}`(MI-E)` the two divergences $$D(P_{\R{X}}\|P_{\R{X}'}), D
 
 and $I(\R{X}\wedge\R{Y})$ does not depend on the reference distribution.
 
-```{code-cell} ipython3
+```{code-cell}
 
 ```
 
@@ -905,7 +984,7 @@ I(\R{X}\wedge \R{Y}) &= D(P_{\R{X},\R{Y}}\|P_{\R{X}},P_{\R{Y}})\\
 \end{align}
 $$
 
-```{code-cell} ipython3
+```{code-cell}
 
 ```
 
