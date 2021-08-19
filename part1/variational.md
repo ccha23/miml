@@ -247,15 +247,13 @@ $$ (density)
 
 +++
 
-Estimating MI well neither require nor imply the divergence/density to be estimated well. However, MI estimation is often not the end goal, but an objective to train a neural network to return the divergence/density. The features/representations learned by the neural network may be applicable to different downstream inference tasks.
-
-+++ {"tags": []}
-
-### With known reference
+Estimating MI well neither require nor imply the divergence/density to be estimated well. However, 
+- MI estimation is often not the end goal, but an objective to train a neural network to return the divergence/density. 
+- The features/representations learned by the neural network may be applicable to different downstream inference tasks.
 
 +++
 
-To explain the idea of neural estimation, consider the problem of estimating the KL divergence with a known reference, i.e., $P_{\R{Z}}$ is unknown but $P_{\R{Z}'}$ is known.
+To explain the idea of neural estimation, consider the following characterization of divergence:
 
 +++
 
@@ -268,13 +266,16 @@ D(P_{\R{Z}}\|P_{\R{Z}'}) & =  \sup_{Q\in \mc{P}(\mc{Z})} E \left[ \log \frac{dQ(
 \end{align}
 $$ (D1)
 
-where the optimal solution is $Q=P_{\R{Z}}$.
+where the unique optimal solution is $Q=P_{\R{Z}}$.
 
 ---
 
 +++
 
-It is easy to check that the optimal solution gives the KL divergence formula in {eq}`D`. The proposition essentially gives a tight lower bound on KL divergence maximized by the unknown distribution.
+{eq}`D1` is {eq}`D` but with $P_{\R{Z}}$ replaced by a parameter $Q$.
+
+- The proposition essentially gives a tight lower bound on KL divergence.
+- The unknown distribution is recovered as the optimal solution.
 
 +++
 
@@ -310,7 +311,178 @@ $$
 
 +++
 
-Since both $P_{\R{Z}'}$ and $Q$ are known, the sample average above is a valid estimation of the divergence.
+Since $Q$ is arbitrary, the sample average above is a valid estimate.
+
++++
+
+**But how to compute the density ratio?**
+
++++
+
+We will consider the cases when $P_{\R{Z}'}$ is known/unknown separately.
+
++++
+
+### With unknown reference
+
++++
+
+Consider estimating the KL divergence $D(P_{\R{Z}}\|P_{\R{Z}'})$ when both $P_{\R{Z}}$ and $P_{\R{Z}'}$ are unknown.
+
++++
+
+If $P_{\R{Z}'}$ is unknown, we can apply a change of variable
+
++++
+
+$$
+r(z) = \frac{dQ(z)}{dP_{\R{Z}'}(z)},
+$$ (Q->r)
+
++++
+
+which absorbs the unknown reference into the parameter.
+
++++
+
+---
+**Proposition**
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) & =  \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ E[r(\R{Z}')]=1}} E \left[ \log r(\R{Z}) \right] 
+\end{align}
+$$ (D1)
+
+where the optimal $r$ satisfies 
+$
+r(\R{Z}) = \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}.
+$ 
+
+---
+
++++
+
+---
+
+**Exercise** Show using {eq}`Q->r` that the optimal solution satisfies the constraint stated in the supremum {eq}`D1`.
+
++++
+
+The constraint on $r$ is obtained from the constraint on $Q\in \mc{P}(\mc{Z})$, i.e., with $dQ(z)=r(z)dP_{\R{Z}'}(z)$, 
+
+$$
+\begin{align*}
+dQ(z) \geq 0 &\iff r(z)\geq 0\\
+\int_{\mc{Z}}dQ(z)=1 &\iff E[r(\R{Z}')]=1.
+\end{align*}
+$$
+
++++
+
+---
+
++++
+
+The next step is to train a neural network that computes $r$. What about?
+
++++
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ \frac1{n'}\sum_{i\in [n']} r(\R{Z}'_i)]=1}} \frac1n \sum_{i\in [n]} \log r(\R{Z}_i)
+\end{align}
+$$ (avg-D1)
+
++++
+
+**How to impose the constraint on $r$ when training a neural network?**
+
++++
+
+We can apply by a change of variable:
+
+$$
+\begin{align}
+r(z)&=\frac{e^{t(z)}}{E[e^{t(\R{Z}')}]}.
+\end{align}
+$$ (r->t)
+
++++
+
+**Exercise** Show that $r$ defined in {eq}`r->t` satisfies the constraint in {eq}`D1` for all real-valued function $t:\mc{Z}\to \mathbb{R}$.
+
++++
+
+**Proof** 
+
+$$
+\begin{align}
+E\left[ \frac{e^{t(\R{Z}')}}{E[e^{t(\R{Z}')}]} \right] =  \frac{E\left[ e^{t(\R{Z}')} \right]}{E[e^{t(\R{Z}')}]} = 1.
+\end{align}
+$$
+
++++
+
+Substituting {eq}`r->t` into {eq}`D1` gives the well-known *Donsker-Varadhan (DV)* formula:
+
++++
+
+---
+**Corollary** [{cite}`donsker1983asymptotic`]
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] - \log E[e^{t(\R{Z}')}]
+\end{align}
+$$ (DV)
+
+where the optimal $t$ satisfies
+$$
+\begin{align}
+t(\R{Z}) = \log \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})} + c
+\end{align}
+$$ (DV:sol)
+
+almost surely for some constant $c$.
+
+---
+
++++
+
+The divergence can be estimated as follows instead of {eq}`avg-D1`:
+
++++
+
+$$
+\begin{align}
+D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{t: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} t(\R{Z}_i) - \frac1{n'}\sum_{i\in [n']} e^{t(\R{Z}'_i)}
+\end{align}
+$$ (avg-DV)
+
++++
+
+In summary, the neural estimation of KL divergence is a sample average of {eq}`D` but with the unknown density ratio replaced by {eq}`r->t` trained as a neural network to maximize the estimate.
+
+$$
+D(P_{\R{Z}}\| P_{\R{Z}'}) = \underbrace{}_{\sup_{t}}\underbrace{E}_{\op{avg}} \bigg[ \log \underbrace{\frac{P_{\R{Z}}(\R{Z})}{P_{\R{Z}'}(\R{Z})}}_{\frac{e^{t(\R{Z})}}{\underbrace{E}_{\op{avg}}[e^{t(\R{Z}')}]}} \bigg].
+$$
+
++++
+
+### Classifier-based estimation
+
++++
+
+
+
++++ {"tags": []}
+
+### With known reference
+
++++
+
+Consider the problem of estimating the KL divergence with a known reference, i.e., $P_{\R{Z}}$ is unknown but $P_{\R{Z}'}$ is known.
 
 +++
 
@@ -405,7 +577,7 @@ The neural network can take input $z$ and returns output $t(z)$.
 
 +++
 
-We can apply importance sampling. 
+We can apply importance sampling.
 
 +++
 
@@ -513,10 +685,6 @@ In practice, such a choice is impractical because:
 
 +++
 
-
-
-+++
-
 Altogether, we can apply the following change of variable assuming the non-degenerate case that {eq}`Porder` holds:
 
 $$
@@ -596,141 +764,6 @@ $$
 +++
 
 **How good is the sample average estimate for the normalization factor?**
-
-+++
-
-### With unknown reference
-
-+++
-
-If $P_{\R{Z}'}$ is unknown, we can apply a change of variable
-
-+++
-
-$$
-r(z) = \frac{dQ(z)}{dP_{\R{Z}'}(z)},
-$$ (Q->r)
-
-+++
-
-which absorbs the unknown reference into the parameter.
-
-+++
-
----
-**Proposition**
-
-$$
-\begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) & =  \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ E[r(\R{Z}')]=1}} E \left[ \log r(\R{Z}) \right] 
-\end{align}
-$$ (D1)
-
-where the optimal $r$ satisfies 
-$
-r(\R{Z}) = \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}.
-$ 
-
----
-
-+++
-
----
-
-**Exercise** Show using {eq}`Q->r` that the optimal solution satisfies the constraint stated in the supremum {eq}`D1`.
-
-+++
-
-The constraint on $r$ is obtained from the constraint on $Q\in \mc{P}(\mc{Z})$, i.e., with $dQ(z)=r(z)dP_{\R{Z}'}(z)$, 
-
-$$
-\begin{align*}
-dQ(z) \geq 0 &\iff r(z)\geq 0\\
-\int_{\mc{Z}}dQ(z)=1 &\iff E[r(\R{Z}')]=1.
-\end{align*}
-$$
-
-+++
-
----
-
-+++
-
-The next step is to train a neural network that computes $r$. What about?
-
-+++
-
-$$
-\begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{\substack{r:\mc{Z}\to \mathbb{R}_+\\ \frac1{n'}\sum_{i\in [n']} r(\R{Z}'_i)]=1}} \frac1n \sum_{i\in [n]} \log r(\R{Z}_i)
-\end{align}
-$$ (avg-D1)
-
-+++
-
-**How to impose the constraint on $r$ when training a neural network?**
-
-+++
-
-We can apply by a change of variable similar to {eq}`q->t`:
-
-$$
-\begin{align}
-r(z)&=\frac{e^{t(z)}}{E[e^{t(\R{Z}')}]}.
-\end{align}
-$$ (r->t)
-
-+++
-
-**Exercise** Show that $r$ defined in {eq}`r->t` satisfies the constraint in {eq}`D1` for all real-valued function $t:\mc{Z}\to \mathbb{R}$.
-
-+++
-
-**Proof** 
-
-$$
-\begin{align}
-E\left[ \frac{e^{t(\R{Z}')}}{E[e^{t(\R{Z}')}]} \right] =  \frac{E\left[ e^{t(\R{Z}')} \right]}{E[e^{t(\R{Z}')}]} = 1.
-\end{align}
-$$
-
-+++
-
-Substituting {eq}`r->t` gives the well-known *Donsker-Varadhan (DV)* formula:
-
-+++
-
----
-**Corollary** [{cite}`donsker1983asymptotic`]
-
-$$
-\begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] - \log E[e^{t(\R{Z}')}]
-\end{align}
-$$ (DV)
-
-where the optimal $t$ satisfies
-$$
-\begin{align}
-t(\R{Z}) = \log \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})} + c
-\end{align}
-$$ (DV:sol)
-
-almost surely for some constant $c$.
-
----
-
-+++
-
-The divergence can be estimated as follows instead of {eq}`avg-D1`:
-
-+++
-
-$$
-\begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{t: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} t(\R{Z}_i) - \frac1{n'}\sum_{i\in [n']} e^{t(\R{Z}'_i)}
-\end{align}
-$$ (avg-DV)
 
 +++
 
