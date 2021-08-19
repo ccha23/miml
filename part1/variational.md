@@ -133,7 +133,7 @@ Estimate the KL *divergence*
 
 $$
 \begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) &:= E\left[\log \frac{d P_{\R{Z}}(\R{Z})}{d P_{\R{Z}'}(\R{Z})} \right].
+D(P_{\R{Z}}\|P_{\R{Z}'}) &:= E\left[\log \frac{d P_{\R{Z}}(\R{Z})}{d P_{\R{Z}'}(\R{Z})} \right]
 \end{align}
 $$ (D)
 
@@ -318,7 +318,28 @@ Since both $P_{\R{Z}'}$ and $Q$ are known, the sample average above is a valid e
 
 +++
 
-Note that the proposition reduces to the cross-entropy upper bound on entropy:
+KL divergence is related to the entropy and cross entropy:
+
++++
+
+$$
+\begin{align}
+D(P_{\R{Z}}\| P_{\R{Z}'})= \overbrace{\underbrace{E\left[-\log p_{\R{Z}'}(\R{Z})\right]}_{\approx \frac1n \sum_{i\in [n]} \log p_{\R{Z}'}(\R{Z}_i)}}^{\text{cross entropy}} - \overbrace{\underbrace{H(\R{Z})}_{:= E\left[ \log \frac{1}{p_{\R{Z}}(\R{Z})}\right]}}^{\text{entropy}}
+\end{align}
+$$ (D->H)
+
++++
+
+Cross entropy can be approximated by the sample average above since $p_{\R{Z}'}$ is known.
+In otherwise, KL divergence can be estimated using an entropy estimate.
+
++++
+
+**How to estimate the entropy?**
+
++++
+
+Substituting {eq}`D->H` into {eq}`D1` gives:
 
 +++
 
@@ -328,7 +349,7 @@ Note that the proposition reduces to the cross-entropy upper bound on entropy:
 
 $$
 \begin{align}
-H(\R{Z}) := E\left[ \log \frac{1}{p_{\R{Z}}(\R{Z})}\right] = \inf_{q\in \mc{P}_{\mu}(\mc{Z})} E\left[- \log q(\R{Z})\right]
+H(\R{Z}) = \inf_{q\in \mc{P}_{\mu}(\mc{Z})} E\left[- \log q(\R{Z})\right]
 \end{align}
 $$ (H1)
 
@@ -336,39 +357,6 @@ where the optimal $q$ satisfies $q(\R{Z})=p_{\R{Z}}(\R{Z})$ in {eq}`density` alm
 
 
 ---
-
-+++
-
----
-
-**Proof**
- 
-{eq}`H1` follows from {eq}`D1` by rewriting the density ratios in {eq}`D` and {eq}`D1` as follows:
-
-$$
-\begin{align*}
-\frac{dP_{\R{Z}}}{dP_{\R{Z}'}} &= \frac{p_{\R{Z}}}{p_{\R{Z}'}}\\
-\frac{dQ_{\R{Z}}}{dP_{\R{Z}'}} &= \frac{q}{p_{\R{Z}'}}.
-\end{align*}
-$$
-
----
-
-+++
-
-KL divergence can be estimated using an entropy estimate as follows 
-
-$$
-\begin{align}
-D(P_{\R{Z}}\| P_{\R{Z}'})= E\left[-\log p_{\R{Z}'}(\R{Z})\right] - H(\R{Z}) 
-\end{align}
-$$ (D->H)
-
-and the expectation above can be approximated by the sample average $\frac1n \sum_{i\in [n]} \log p_{\R{Z}'}(\R{Z}_i)$ since $p_{\R{Z}'}$ is known.
-
-+++
-
-**How to estimate the entropy?**
 
 +++
 
@@ -380,9 +368,9 @@ $$ (q->t_z)
 
 +++
 
-called the *soft-max* layer, and optimize a neural network that has no input but returns a vector 
+called the *soft-max* layer, and optimize a neural network that takes no input but returns a vector 
 
-$$\M{t}:=\begin{bmatrix} g_z\end{bmatrix}_{z\in \mc{Z}} \in \mathbb{R}^{\mc{Z}},$$
+$$\M{t}:=\begin{bmatrix} t_z\end{bmatrix}_{z\in \mc{Z}} \in \mathbb{R}^{\mc{Z}},$$
 
 called the *logits*.
 
@@ -399,18 +387,12 @@ called the *logits*.
 We can apply the following change of variable instead
 
 $$
-q(z) := \frac{e^{t(z)}p_{\R{Z}'}(z)}{ E\left[e^{t(\R{Z}')}\right]} \quad \text{for }z\in \mc{Z},
-$$ (q->t)
+q(z) := \frac{e^{t(z)}}{ \int_{\mc{Z}} t\,d\mu } \quad \text{for }z\in \op{supp}(p_{\R{Z}}):=\Set{z\in \mc{Z}\mid p_{\R{Z}}>0}.
+$$ 
 
 +++
 
-which must be in $\mc{P}_{\mu}(\mc{Z})$ for all real-valued function $t:\mc{Z}\to \mathbb{R}$, namely, $q(z)\geq 0$ and
-
-$$
-\begin{align}
-\int_{\mc{Z}} q \,d\mu = \frac{\int_{z\in \mc{Z}}  e^{t(z)}p_{\R{Z}'}(z) d\mu(z)}{ E\left[e^{t(\R{Z}')}\right]}    = 1.
-\end{align}
-$$
+which must be in $\mc{P}_{\mu}(\mc{Z})$ for all real-valued function $t:\mc{Z}\to \mathbb{R}$. In particular, since $e^{t(z)}>0$, $z$ has to be restricted to the support $\op{supp}(p_{\R{Z}})$ of $p_{\R{Z}}$.
 
 +++
 
@@ -418,12 +400,90 @@ The neural network can take input $z$ and returns output $t(z)$.
 
 +++
 
+**But how to compute the normalization factor $\int_{\mc{Z}} t\,d\mu$?**
+
++++
+
+We can apply a trick from importance sampling
+
+$$
+\begin{align}
+\int_{\mc{Z}} t\,d\mu &= \int_{\mc{Z}} \frac{t}{p_{\R{Z}'}} p_{\R{Z}'}\,d\mu \\
+& = E\left[ \frac{t(\R{Z}')}{p_{\R{Z}'}(\R{Z}')} \right]\\
+&\approx \frac{1}{n'}\sum_{i\in [n']} \frac{t(\R{Z}'_i)}{p_{\R{Z}'}(\R{Z}'_i)},
+\end{align}
+$$ (int->avg)
+
+which turns the integration into an expectation that can then be approximated by i.i.d. samples ${\R{Z}'}^{n'}$ of $\R{Z}'$.
+
++++
+
+---
+
+**Exercise** The first equality in {eq}`int->avg) requires 
+
+$$
+\op{supp}(p_{\R{Z}'})\supseteq \op{supp}(p_{\R{Z}}),
+$$ (Porder)
+
+denoted as $P_{\R{Z}'}\succeq P_{\R{Z}}$, i.e., any event of $\mc{X}\times \mc{Y}$ probable w.r.t. $P_{\R{X},\R{Y}}$ is also probable w.r.t. $P_{\R{X}'}\times P_{\R{Y}'}$. Show that this condition holds iff $D(P_{\R{Z}}\| P_{\R{Z}'})<\infty$.
+
++++
+
+**Solution** By definitions {eq}`D` and {eq}`density`,
+
+$$
+D(P_{\R{Z}}\|P_{\R{Z}'}) = E\left[ \frac{p_{\R{Z}}(\R{Z})}{p_{\R{Z}'}(\R{Z})} \right]
+$$
+
+which is bounded iff $\frac{p_{\R{Z}}(\R{Z})}{p_{\R{Z}'}(\R{Z})}$ is bounded almost surely, i.e., $p_{\R{Z}'}(\R{Z})>0$ almost surely. This happens iff {eq}`Porder` holds.
+
++++
+
+---
+
++++
+
+Altogether, we can apply the following change of variable assuming the non-degenerate case that {eq}`Porder` holds:
+
+$$
+q(z) := \frac{e^{t(z)}p_{\R{Z}'}(z)}{ E\left[e^{t(\R{Z}')}\right]} \quad \text{for }z\in \op{supp}(p_{\R{Z}}).
+$$ (q->t)
+
++++
+
+---
+
 **Exercise** How should the neural network compute $q$ if $\R{Z}=(\R{Z}_{\text{d}},\R{Z}_{\text{c}})$ has both a continuous component $\R{Z}_{\text{c}}$ and a discrete component $\R{Z}_{\text{d}}$?
 
 +++
 
 **Solution** The neural network can take the continuous component $z_{\text{c}}$
 as input and return the vector $\M{t}(z_{\text{c}}) = \begin{bmatrix} t_{z_{\text{d}}}(z_{\text{c}}) \end{bmatrix}_{z_{\text{d}}}$.
+
++++
+
+---
+
++++
+
+---
+
+**Exercise** Indeed, {eq}`q->t_z` is a special case of {eq}`q->t` with a suitable choice of $P_{\R{Z}'}$. How?
+
++++
+
+**Solution** {eq}`q->t_z` can be obtained from {eq}`q->t` by choosing $P_{\R{Z}'} = \op{Uniform}_{\mc{Z}}$, i.e., the uniform distribution of $\mc{Z}$:
+
+$$
+\begin{align*}
+\frac{e^{t(z)}\overbrace{p_{\R{Z}'}(z)}^{=1/k}}{ \underbrace{E\left[e^{t(\R{Z}')}\right]}_{=\frac1k \sum_{i\in [k]} e^{t(z_i)}}} \quad \text{where } k=\abs{Z}.
+\end{align*}
+$$
+
++++
+
+---
 
 +++
 
@@ -504,13 +564,13 @@ We can apply by a change of variable similar to {eq}`q->t`:
 
 $$
 \begin{align}
-r(z)&=\frac{e^{g(z)}}{E[e^{g(\R{Z}')}]}.
+r(z)&=\frac{e^{t(z)}}{E[e^{t(\R{Z}')}]}.
 \end{align}
-$$ (r->g)
+$$ (r->t)
 
 +++
 
-**Exercise** Show that $r$ defined in {eq}`r->g` satisfies the constraint in {eq}`D1` for all real-valued function $g:\mc{Z}\to \mathbb{R}$.
+**Exercise** Show that $r$ defined in {eq}`r->t` satisfies the constraint in {eq}`D1` for all real-valued function $t:\mc{Z}\to \mathbb{R}$.
 
 +++
 
@@ -518,13 +578,13 @@ $$ (r->g)
 
 $$
 \begin{align}
-E\left[ \frac{e^{g(\R{Z}')}}{E[e^{g(\R{Z}')}]} \right] =  \frac{E\left[ e^{g(\R{Z}')} \right]}{E[e^{g(\R{Z}')}]} = 1.
+E\left[ \frac{e^{t(\R{Z}')}}{E[e^{t(\R{Z}')}]} \right] =  \frac{E\left[ e^{t(\R{Z}')} \right]}{E[e^{t(\R{Z}')}]} = 1.
 \end{align}
 $$
 
 +++
 
-Substituting {eq}`r->g` gives the well-known *Donsker-Varadhan (DV)* formula:
+Substituting {eq}`r->t` gives the well-known *Donsker-Varadhan (DV)* formula:
 
 +++
 
@@ -533,14 +593,14 @@ Substituting {eq}`r->g` gives the well-known *Donsker-Varadhan (DV)* formula:
 
 $$
 \begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{g: \mc{Z} \to \mathbb{R}} E[g(\R{Z})] - \log E[e^{g(\R{Z}')}]
+D(P_{\R{Z}}\|P_{\R{Z}'}) =  \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] - \log E[e^{t(\R{Z}')}]
 \end{align}
 $$ (DV)
 
 where the optimal $g$ satisfies
 $$
 \begin{align}
-g(\R{Z}) = \log \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})} + c
+t(\R{Z}) = \log \frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})} + c
 \end{align}
 $$ (DV:sol)
 
@@ -550,13 +610,13 @@ almost surely for some constant $c$.
 
 +++
 
-The divergence can be estimated as follows instead of {eq}`avg-D1`: 
+The divergence can be estimated as follows instead of {eq}`avg-D1`:
 
 +++
 
 $$
 \begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{g: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} g(\R{Z}_i) - \frac1{n'}\sum_{i\in [n']} e^{g(\R{Z}'_i)}
+D(P_{\R{Z}}\|P_{\R{Z}'}) \approx \sup_{t: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} t(\R{Z}_i) - \frac1{n'}\sum_{i\in [n']} e^{t(\R{Z}'_i)}
 \end{align}
 $$ (avg-DV)
 
@@ -584,13 +644,23 @@ $$
 
 Since both $P_{\R{Z}}$ and $P_{\R{Z}'}$ are unknown, we can apply {eq}`avg-DV` to estimate the divergence.
 
++++
+
+$$
+\begin{align}
+I(\R{X}\wedge \R{Y}) \approx \sup_{t: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} t(\R{X}_i,\R{Y}_i) - \frac1{n'}\sum_{i\in [n']} e^{t(\R{X}'_i,\R{Y}'_i)}
+\end{align}
+$$ (MINE)
+
+where $P_{\R{X}',\R{Y}'}:=P_{\R{X}}\times P_{\R{Y}}$. This is the *Mutual Information Neural Estimation (MINE)* proposed by {cite}`belghazi2018mine`.
+
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
-**But how to obtain ${\R{Z}'}^{n'}$ for estimating the divergence?**
+**But how to obtain the reference samples ${\R{Z}'}^{n'}$, i.e., ${\R{X}'}^{n'}$ and ${\R{Y}'}^{n'}$?**
 
 +++ {"slideshow": {"slide_type": "fragment"}, "tags": []}
 
-We can approximate the i.i.d. sampling of $P_{\R{X}}\times P_{\R{Y}}$ using samples from $P_{\R{X}\R{Y}}$ by a re-sampling trick:
+We can approximate the i.i.d. sampling of $P_{\R{X}}\times P_{\R{Y}}$ using samples from $P_{\R{X},\R{Y}}$ by a re-sampling trick:
 
 $$
 \begin{align}
@@ -608,7 +678,7 @@ and $[n]:=\Set{1,\dots,n}$.
 
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
-*Mutual Information Neural Estimation (MINE)* {cite}`belghazi2018mine` uses the following implementation that samples $(\R{J},\R{K})$ but without replacement. You can change $n'$ using the slider for `n_`.
+MINE {cite}`belghazi2018mine` uses the following implementation that samples $(\R{J},\R{K})$ but without replacement. You can change $n'$ using the slider for `n_`.
 
 ```{code-cell} ipython3
 def resample(XY, size, replace=False):
@@ -680,7 +750,7 @@ for $P_{\R{X}'}\times P_{\R{Y}'}$, called the (product) reference distribution, 
 
 $$
 \begin{align}
-P_{\R{X}'}\times P_{\R{Y}'} \preceq P_{\R{X},\R{Y}'},
+P_{\R{X}'}\times P_{\R{Y}'} \succeq P_{\R{X},\R{Y}},
 \end{align}
 $$ (finite-D)
 
@@ -712,7 +782,33 @@ $$
 
 +++
 
-*Mutual Information Neural Entropic Estimation (MI-NEE)* {cite}`chan2019neural` uses {eq}`MI-E` to estimate MI by estimating the three divergences. $P_{\R{X}'}$ and $P_{\R{Y}'}$ are known distributions and so arbitrarily many i.i.d. samples can be drawn from them directly without using the resampling trick {eq}`resample`.
+*Mutual Information Neural Entropic Estimation (MI-NEE)* {cite}`chan2019neural` uses {eq}`MI-E` to estimate MI by estimating the three divergences.
+
++++
+
+Applying {eq}`avg-DV` to each divergence:
+
++++
+
+$$
+\begin{align}
+I(\R{X}\wedge \R{Y}) &\approx \sup_{t: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} t_{\R{X},\R{Y}}(\R{X}_i,\R{Y}_i) - \frac1{n'}\sum_{i\in [n']} e^{t_{\R{X},\R{Y}}(\R{X}'_i,\R{Y}'_i)}\\
+&\quad - \sup_{t: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} t_{\R{X}}(\R{X}_i) - \frac1{n'}\sum_{i\in [n']} e^{t_{\R{X}}(\R{X}'_i)} \\
+&\quad - \sup_{t: \mc{Z} \to \mathbb{R}} \frac1n \sum_{i\in [n]} t_{\R{Y}}(\R{Y}_i) - \frac1{n'}\sum_{i\in [n']} e^{t_{\R{Y}}(\R{Y}'_i)}
+\end{align}
+$$ (MINE)
+
++++
+
+$P_{\R{X}'}$ and $P_{\R{Y}'}$ are known distributions and so arbitrarily many i.i.d. samples can be drawn from them directly without using the resampling trick {eq}`resample`.
+
++++
+
+Indeed, one need only a generator for the reference samples:
+
+$$
+\begin{alig  n
+$$
 
 +++
 
@@ -773,7 +869,7 @@ The *mutual information neural estimation (MINE)* in {cite}`belghazi2018mine` us
 $$
 \begin{align}
 I(\R{X}\wedge \R{Y}) &= D(P_{\R{X},\R{Y}}\|P_{\R{X}}\times P_{\R{Y}}) \\
-&=  \sup_{g: \mc{X}\times \mc{Y} \to \mathbb{R}} E[g(\R{X},\R{Y})] - \log E[e^{g(\R{X}', \R{Y}')}]\\
+&=  \sup_{t: \mc{X}\times \mc{Y} \to \mathbb{R}} E[t(\R{X},\R{Y})] - \log E[e^{t(\R{X}', \R{Y}')}]\\
 &\approx \sup_{\theta} \frac1n \sum_{i\in [n]} g_{\theta}(\R{X}_i,\R{Y}_i)] - \log \frac1{n'} \sum_{i\in [n']}e^{g_{\theta}(\R{X}_{\R{J}_i}, \R{Y}_{\R{K}_i})}.
 \end{align}
 $$ (MINE)
@@ -786,8 +882,8 @@ Consider another change of variable:
 
 $$
 \begin{align}
-q(z) &= \frac{e^{g(z)}}{1+e^{g(z)}}, & \text{or equivalently}\\
-g(z) &= \log \frac{q(z)}{1-q(z)}
+q(z) &= \frac{e^{t(z)}}{1+e^{t(z)}}, & \text{or equivalently}\\
+t(z) &= \log \frac{q(z)}{1-q(z)}
 \end{align}
 $$
 
@@ -823,11 +919,11 @@ For two random variables $\R{Z}$ and $\R{Z}'$, the Donsker Varadhan formula for 
 
 $$
 \begin{align}
-D(P_{\R{Z}} \| P_{\R{Z}'}) &= \sup_{g\in \mathcal{G}} E[g(Z)] - \log E[e^{g(Z')}]
+D(P_{\R{Z}} \| P_{\R{Z}'}) &= \sup_{g\in \mathcal{G}} E[t(Z)] - \log E[e^{t(Z')}]
 \end{align}
 $$ (VD)
 
-where $\mathcal{G}$ is the set of function $g:\mc{Z}\to \mathbb{R}$. The optimal solution satisfies
+where $\mathcal{G}$ is the set of function $t:\mc{Z}\to \mathbb{R}$. The optimal solution satisfies
 
 $$
 \begin{align}
