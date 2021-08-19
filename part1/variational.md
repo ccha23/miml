@@ -7,9 +7,9 @@ jupytext:
     format_version: 0.13
     jupytext_version: 1.11.4
 kernelspec:
-  display_name: Python 3.8 (XPython)
+  display_name: Python 3 (ipykernel)
   language: python
-  name: xpython
+  name: python3
 ---
 
 +++ {"slideshow": {"slide_type": "slide"}}
@@ -28,7 +28,7 @@ $\def\abs#1{\left\lvert #1 \right\rvert}
 \def\E{\op{E}}
 \def\d{\mathrm{\mathstrut d}}$
 
-```{code-cell}
+```{code-cell} ipython3
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 import numpy as np
@@ -74,7 +74,7 @@ $$ (MI)
 
 **Exercise** Run the following code cell a couple of times to see different distributions of samples of $(\R{X},\R{Y})$. What is unknown about the sampling distribution?
 
-```{code-cell}
+```{code-cell} ipython3
 ---
 slideshow:
   slide_type: fragment
@@ -387,12 +387,13 @@ called the *logits*.
 We can apply the following change of variable instead
 
 $$
-q(z) := \frac{e^{t(z)}}{ \underbrace{\int_{\mc{Z}} t\,d\mu}_{c:=} } \quad \text{for }z\in \op{supp}(p_{\R{Z}}):=\Set{z\in \mc{Z}\mid p_{\R{Z}}>0}.
+q(z) := \frac{e^{t(z)}}{ \underbrace{\int_{\mc{Z}} e^t\,d\mu}_{c:=} } \quad \text{for }z\in \op{supp}(p_{\R{Z}}):=\Set{z\in \mc{Z}\mid p_{\R{Z}}>0}.
 $$ (q->t:1)
 
 +++
 
-which must be in $\mc{P}_{\mu}(\mc{Z})$ for all real-valued function $t:\mc{Z}\to \mathbb{R}$. In particular, since $e^{t(z)}>0$, $z$ has to be restricted to the support $\op{supp}(p_{\R{Z}})$ of $p_{\R{Z}}$.
+which must be in $\mc{P}_{\mu}(\mc{Z})$ for all real-valued function $t:\mc{Z}\to \mathbb{R}$.  
+In particular, since $e^{t(z)}>0$, $z$ has to be restricted to the support $\op{supp}(p_{\R{Z}})$ of $p_{\R{Z}}$.
 
 +++
 
@@ -410,15 +411,13 @@ We can apply importance sampling.
 
 Consider any distribution $P_{\R{Z}''}\in \mc{P}(\mc{Z})$ such that
 
-$$
-P_{\R{Z}''}\succeq P_{\R{Z}},
-$$ (Porder)
+$$P_{\R{Z}''}\succeq P_{\R{Z}},$$
 
 which means that any event $\mc{Z}$ is probable w.r.t. $P_{\R{Z}}$ is also probable w.r.t. $P_{\R{Z}''}$, or equivalently,
 
 $$
 \op{supp}(p_{\R{Z}''})\supseteq \op{supp}(p_{\R{Z}}).
-$$
+$$  (Porder)
 
 +++
 
@@ -428,8 +427,8 @@ The desired integral can then be turned into an expectation:
 
 $$
 \begin{align}
-\int_{\mc{Z}} t\,d\mu &= \int_{\mc{Z}} \frac{t}{p_{\R{Z}''}} p_{\R{Z}''}\,d\mu \\
-& = E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right].
+\int_{\mc{Z}} e^t\,d\mu &= \int_{\mc{Z}} \frac{e^t}{p_{\R{Z}''}} p_{\R{Z}''}\,d\mu \\
+& = E\left[ \frac{e^{t(\R{Z}'')}}{p_{\R{Z}''}(\R{Z}'')} \right].
 \end{align}
 $$ (int->avg)
 
@@ -438,9 +437,11 @@ $$ (int->avg)
 ---
 **Proposition** 
 
+For any $P_{\R{Z}''}\succeq P_{\R{Z}}$ {eq}`Porder`,
+
 $$
 \begin{align}
-H(\R{Z}) &=  - \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] + \log E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right]
+H(\R{Z}) &=  - \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] + \log E\left[ \frac{e^{t(\R{Z}'')}}{p_{\R{Z}''}(\R{Z}'')} \right]
 \end{align}
 $$ (H2)
 
@@ -451,39 +452,68 @@ almost surely for some constant $c\in \mathbb{R}$.
 
 +++
 
-Applying {eq}`H2` to {eq}`D->H` gives:
+In summary, applying {eq}`H2` to {eq}`D->H` gives the following divergence estimate:
 
 +++
 
 ---
 **Corollary** 
 
+For any $P_{\R{Z}''}\succeq P_{\R{Z}}$ {eq}`Porder`,
+
 $$
 \begin{align}
-D(P_{\R{Z}}\|P_{\R{Z}'}) &= E\left[-\log p_{\R{Z}'}(\R{Z})\right] +  \sup_{t: \mc{Z} \to \mathbb{R}} E[t(\R{Z})] - \log E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right]
+D(P_{\R{Z}}\|P_{\R{Z}'}) &= \underbrace{E\left[-\log p_{\R{Z}'}(\R{Z})\right]}_{\approx \frac{1}{n} \sum_{i\in [n]} -\log p_{\R{Z}'}(\R{Z}_i) } +  \overbrace{\sup_{t: \mc{Z} \to \mathbb{R}} \underbrace{E[t(\R{Z})]}_{\approx \frac1{n} \sum_{i\in [n]} t(\R{Z}_i)} - \log \underbrace{E\left[ \frac{e^{t(\R{Z}'')}}{p_{\R{Z}''}(\R{Z}'')} \right]}_{\color{blue}{\frac1{n''} \sum_{i\in [n'']} \frac{e^{t(\R{Z}''_i)}}{p_{\R{Z}''}(\R{Z}''_i)}}}}^{H(\R{Z})=}
 \end{align}
 $$ (D2)
 
-where the optimal $t$ satisfies $t(\R{Z}) = \log p_{\R{Z}}(\R{Z}) + c$
+for i.i.d. samples $\R{Z}^n$ and ${\R{Z}''}^{n''}$ of $\R{Z}$ and $\R{Z}''$ respectively. The optimal $t$ satisfies $t(\R{Z}) = \log p_{\R{Z}}(\R{Z}) + c$
 almost surely for some constant $c\in \mathbb{R}$.
 
 ---
 
 +++
 
-
+Since the divergence does not depend on $P_{\R{Z}''}$, we can further optimize it to reduce the variance of the final sample average highlighted in blue.
 
 +++
 
+---
+
+**Exercise** Show that the optimal choice of $P_{\R{Z}''}$ that minimizes the variance of 
+
+$$\frac1{n''} \sum_{i\in [n'']} \frac{e^{t(\R{Z}''_i)}}{p_{\R{Z}''}(\R{Z}''_i)}$$ 
+
+has $p_{\R{Z}''}=e^t/c$ for some constant $c$.
+
++++
+
+**Proof**
+
+With $p_{\R{Z}''}=e^t/c$,
+
 $$
 \begin{align}
-\int_{\mc{Z}} t\,d\mu &= \int_{\mc{Z}} \frac{t}{p_{\R{Z}}} p_{\R{Z}}\,d\mu \\
-& = E\left[ \frac{t(\R{Z}'')}{p_{\R{Z}''}(\R{Z}'')} \right]\\
-&\approx \frac{1}{n''}\sum_{i\in [n'']} \frac{t(\R{Z}''_i)}{p_{\R{Z}''}(\R{Z}''_i)},
+\frac1{n''} \sum_{i\in [n'']} \frac{e^{t(\R{Z}''_i)}}{\underbrace{p_{\R{Z}''}(\R{Z}''_i)}_{=e^{t(\R{Z}'')}/c}} &= \frac1{n''} \sum_{i\in [n'']} c = c
 \end{align}
-$$ (int->avg)
+$$ 
 
-which is the average of i.i.d. samples ${\R{Z}''}^{n''}$ of $\R{Z}''$.
+which has $0$ variance since $c$ is a constant. Hence, the variance is minimized as desired.
+
++++
+
+---
+
++++
+
+In practice, such a choice is impractical because:
+
+- The constant $c$ used in defining the optimal $p_{\R{Z}''}$ is precisely what needs to be estimated.
+- Even if $c$ is known, it is difficult to sample according to the optimal according to the optimal density $e^{t}/c$. E.g., the inverse sampling method requires the cdf inverse, which is intractable for a complex neural network computing $t(z)$.
+
++++
+
+
 
 +++
 
@@ -566,10 +596,6 @@ $$
 +++
 
 **How good is the sample average estimate for the normalization factor?**
-
-+++
-
-Following the idea of importance sampling, the variance of the sample average estimate in {eq}`int->avg` can be minimized to $0$ by choosing $p_{\R{Z}''}$ proportional to $e^{t}$.
 
 +++
 
@@ -766,7 +792,7 @@ and $[n]:=\Set{1,\dots,n}$.
 
 MINE {cite}`belghazi2018mine` uses the following implementation that samples $(\R{J},\R{K})$ but without replacement. You can change $n'$ using the slider for `n_`.
 
-```{code-cell}
+```{code-cell} ipython3
 def resample(XY, size, replace=False):
     index = rng.choice(range(XY.shape[0]), size=size, replace=replace)
     return XY[index]
@@ -782,7 +808,7 @@ def plot_resampled_data_without_replacement(n_=(2, n)):
 
 **Exercise** To allow $n>n'$, we need to sample the index with replacement. Complete the following code and observe what happens when $n \gg n'$
 
-```{code-cell}
+```{code-cell} ipython3
 :tags: []
 
 @widgets.interact
@@ -915,7 +941,7 @@ removing from the {eq}`(MI-E)` the two divergences $$D(P_{\R{X}}\|P_{\R{X}'}), D
 
 and $I(\R{X}\wedge\R{Y})$ does not depend on the reference distribution.
 
-```{code-cell}
+```{code-cell} ipython3
 
 ```
 
@@ -984,7 +1010,7 @@ I(\R{X}\wedge \R{Y}) &= D(P_{\R{X},\R{Y}}\|P_{\R{X}},P_{\R{Y}})\\
 \end{align}
 $$
 
-```{code-cell}
+```{code-cell} ipython3
 
 ```
 
@@ -1054,3 +1080,7 @@ $$
 for some constant $c$.
 
 The optimal solut
+
+```{code-cell} ipython3
+
+```
