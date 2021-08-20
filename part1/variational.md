@@ -35,8 +35,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from IPython import display
+from torch import nn, Tensor
+from torch.nn import functional as F
+
 
 %matplotlib inline
+SEED = 0
 ```
 
 +++ {"slideshow": {"slide_type": "slide"}}
@@ -70,38 +74,46 @@ $$ (MI)
 
 +++
 
----
+Run the following code, which uses `numpy` to 
+- generate i.i.d. samples from a multivariate gaussian distribution, and
+- store the samples as numpy arrays assigned to `XY`.
 
-**Exercise** Run the following code cell a couple of times to see different distributions of samples of $(\R{X},\R{Y})$. What is unknown about the sampling distribution?
+```{code-cell} ipython3
+import numpy as np
+
+# Seeded random number generator for reproducibility
+XY_rng = np.random.default_rng(SEED)
+
+# Sampling from an unknown probability measure
+rho = 1 - 0.19 * XY_rng.random()
+mean, cov, n = [0, 0], [[1, rho], [rho, 1]], 1000
+XY = XY_rng.multivariate_normal(mean, cov, n)
+plt.scatter(XY[:, 0], XY[:, 1], s=2)
+```
+
+You may find more details below:
+- https://numpy.org/doc/stable/reference/random/generated/numpy.random.multivariate_normal.html
+- https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html
+
++++
+
+You can also use 
+- `XY_rng?` to see the doctring such of `XY_rng`, and
+- `dir(XY_rng)` to see the available methods/properties `XY_rng.*`.
 
 ```{code-cell} ipython3
 ---
-slideshow:
-  slide_type: fragment
-tags: []
+jupyter:
+  outputs_hidden: true
+tags: [remove-output]
 ---
-# Sampling from an unknown probability measure
-rho = 0.8 - 0.19 * np.random.rand()
-mean, cov, n = [0, 0], [[1, rho], [rho, 1]], 100
-rng = np.random.default_rng()
-XY = rng.multivariate_normal(mean, cov, n)
-
-# Show the samples
-data = pd.DataFrame(XY, columns=["X", "Y"])
-display.display(data)
-
-# Plot the samples
-def plot_samples_with_kde(data, **kwargs):
-    p = sns.PairGrid(data, **kwargs)
-    p.map_lower(sns.scatterplot)  # scatter plot of samples
-    p.map_upper(sns.kdeplot)  # kernel density estimate for pXY
-    p.map_diag(sns.kdeplot)  # kde for pX and pY
-    return p
-
-
-p = plot_samples_with_kde(data)
-plt.show()
+XY_rng?
+dir(XY_rng)
 ```
+
+---
+
+**Exercise** What is unknown about the above sampling distribution?
 
 +++ {"tags": ["hide-cell"]}
 
@@ -118,6 +130,57 @@ but $\rho$ is unknown (uniformly random over $[0.8,0.99)$).
 ---
 
 +++
+
+To show the data samples using `pandas`:
+
+```{code-cell} ipython3
+---
+slideshow:
+  slide_type: fragment
+tags: []
+---
+import pandas as pd
+
+XY_df = pd.DataFrame(XY, columns=["X", "Y"])
+XY_df
+```
+
+To plot the data using `seaborn`:
+
+```{code-cell} ipython3
+def plot_samples_with_kde(df, **kwargs):
+    p = sns.PairGrid(df, **kwargs)
+    p.map_lower(sns.scatterplot, s=2)  # scatter plot of samples
+    p.map_upper(sns.kdeplot)  # kernel density estimate for pXY
+    p.map_diag(sns.kdeplot)  # kde for pX and pY
+    return p
+
+
+plot_samples_with_kde(XY_df)
+plt.show()
+```
+
+**Exercise** Complete the following code by replacing the blanks `___` so that `XY_ref` stores the i.i.d. samples of $(\R{X}',\R{Y}')$ where $\R{X}'$ and $\R{Y}'$ are zero-mean independent gaussian random variables with unit variance.
+
++++
+
+```Python
+...
+cov_ref, n_ = ___, n
+XY_ref = XY_ref_rng_ref.___(mean, ___, n_)
+...
+```
+
+```{code-cell} ipython3
+XY_ref_rng = np.random.default_rng(SEED)
+### BEGIN SOLUTION
+cov_ref, n_ = [[1, 0], [0, 1]], n
+XY_ref = XY_ref_rng.multivariate_normal(mean, cov_ref, n_)
+### END SOLUTION
+XY_ref_df = pd.DataFrame(XY_ref, columns=["X", "Y"])
+plot_samples_with_kde(XY_ref_df)
+plt.show()
+```
 
 **Can we generalize the problem further?**
 
@@ -319,15 +382,7 @@ Since $Q$ is arbitrary, the sample average above is a valid estimate.
 
 +++
 
-We will consider the cases when $P_{\R{Z}'}$ is known/unknown separately.
-
-+++
-
-### With unknown reference
-
-+++
-
-Consider estimating the KL divergence $D(P_{\R{Z}}\|P_{\R{Z}'})$ when both $P_{\R{Z}}$ and $P_{\R{Z}'}$ are unknown.
+We will first consider estimating the KL divergence $D(P_{\R{Z}}\|P_{\R{Z}'})$ when both $P_{\R{Z}}$ and $P_{\R{Z}'}$ are unknown.
 
 +++
 
@@ -470,11 +525,268 @@ $$
 
 +++
 
-### Classifier-based estimation
+## Training a neural network
 
 +++
 
+We will train a neural network with `torch` and use GPU if available:
 
+```{code-cell} ipython3
+import torch
+
+# use GPU if available
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+if device == "cuda":  # print current GPU name if available
+    print("Using GPU:", torch.cuda.get_device_name(torch.cuda.current_device()))
+```
+
+- https://pytorch.org/docs/stable/notes/randomness.html
+- https://pytorch.org/docs/stable/cuda.html?highlight=cuda#module-torch.cuda
+
++++
+
+When GPU is available, you can use GPU DASHBOARDS on the left to monitor GPU utilizations.
+
++++
+
+![GPU](gpu.dio.svg)
+
++++
+
+The following code defines a simple neural networks with 3 fully-connected (fc) hidden layers:
+
+![Neural net](nn.dio.svg)
+
+where 
+
+- $\M{W}_{\ell}$ and $\M{b}_{\ell}$ are the weight and bias respectively for the linear transformation $\R{W}_l a_l + b_l$ of the $l$-th layer; and
+- $\sigma$ for the first 2 hidden layers is an activation function chosen to be the [*exponential linear unit (ELU)*](https://pytorch.org/docs/stable/generated/torch.nn.ELU.html).
+
+```{code-cell} ipython3
+from torch import nn
+from torch.nn import functional as F
+
+
+class Net(nn.Module):
+    def __init__(self, input_size=2, hidden_size=100, sigma=0.02):
+        super().__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)  # fully-connected (fc) layer
+        self.fc2 = nn.Linear(hidden_size, hidden_size)  # layer 2
+        self.fc3 = nn.Linear(hidden_size, 1)  # layer 3
+        nn.init.normal_(self.fc1.weight, std=sigma)  #
+        nn.init.constant_(self.fc1.bias, 0)
+        nn.init.normal_(self.fc2.weight, std=sigma)
+        nn.init.constant_(self.fc2.bias, 0)
+        nn.init.normal_(self.fc3.weight, std=sigma)
+        nn.init.constant_(self.fc3.bias, 0)
+
+    def forward(self, z):
+        a1 = F.elu(self.fc1(z))
+        a2 = F.elu(self.fc2(a1))
+        t = self.fc3(a2)
+        return t
+
+
+torch.manual_seed(SEED)  # seed RNG for PyTorch
+net = Net()
+net.to(device)
+print(net)
+```
+
+- https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#define-the-network
+
++++
+
+`Net` is a subclass of `nn.Module` with the methods:
+
+- `__init__` that creates/initializes the neural network parameters, which is often organized into layers.
+- `forward` that computes an output from a given input using the neural network parameters.
+
++++
+
+To compute $t(\M{z})$ at $\M{z}=\begin{bmatrix}0\\ 0\end{bmatrix}$:
+
+```{code-cell} ipython3
+from torch import Tensor
+
+z = Tensor([[0.0, 0]]).to(device)
+net(z)
+```
+
+The neural network indeed computes a vectorized function. E.g., we can pass in the vector `XY` of $(\R{X},\R{Y})$ samples as input:
+
+```{code-cell} ipython3
+:tags: []
+
+tXY = (
+    net(Tensor(XY).to(device))  # convert XY to tensor
+    .cpu()  # copy back to CPU
+    .detach()  # detach from current graph (no gradient calculation)
+    .numpy()  # convert output back to numpy
+)
+```
+
+- https://pytorch.org/docs/stable/generated/torch.no_grad.html
+
++++
+
+The output needs to be converted back to a `numpy` array on CPU so it can be plotted as follows:
+
+```{code-cell} ipython3
+cmap = "RdBu"
+ax = sns.scatterplot(data=XY_df, x="X", y="Y", c=tXY, cmap=cmap, s=10)
+
+# add a color bar
+norm = plt.Normalize(tXY.min(), tXY.max())
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+ax.figure.colorbar(sm)
+ax.set_title(r"$e^{t(X,Y)}$")
+plt.show()
+```
+
+The values are all very close to $0$ as we have set a small variance `sigma=0.02` to initialize the neural network parameters.
+
++++
+
+To train the neural network, we will use the minibatch *Adam* gradient descend algorithm on a randomly choice batch of the samples.
+
+```{code-cell} ipython3
+import torch.optim as optim
+resample_rng = np.random.default_rng(SEED) # RNG for minibatch sampling
+
+class DV():
+    def __init__(self, Z, Z_ref, batch_size=32, hidden_size=100, lr=1e-3):
+        self.Z, self.Z_ref = Z, Z_ref
+        self.lr, self.batch_size, setl.hidden_size = lr, batch_size, hidden_size
+        self.net = Net(Z.shape[1], input_size=Z.shape[1], hidden_size=hidden_size)
+        self.optimizer = optim.Adam(self.net.parameters(), hidden_size=hidden_size, lr=lr)
+        
+    def step(self):
+        optimizer.zero_grad()
+    
+        # obtain a random batch of samples
+        batch_Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(device)
+        batch_Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(device)
+        
+        # define loss as negative divergence lower bound from VD formula
+        avg_tZ = net(batch_Z).mean()  # (a)
+        avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(batch_Z_ref.shape[0]) # (b) - (c)
+        loss = -(avg_tZ - avg_etZ_ref)
+        
+        # gradient descent
+        loss.backward()  # (d)
+        optimizer.step() # (f)
+
+    def DV_bound(self, Z, Z_ref):
+        Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(device)
+        Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(device)
+        
+```
+
+Let $\theta$ be the tuple of parameters (weights and biases) of the neural network that computes $t$:
+
+$$
+\theta := (\M{W}_l,\M{b}_l|\ell\in [3])
+$$
+
++++
+
+Define the batch loss function as the negative lower bound of the VD formula in {eq}`VD`:
+
+$$
+\begin{align}
+\R{L}(\theta) := - \bigg[\underbrace{\frac1{\abs{\R{B}}} \sum_{i\in \R{B}} t(\R{Z}_i)}_{\text{(a)}} - \underbrace{\log \frac1{\abs{\R{B}'}} \sum_{i\in \R{B}'} e^{t(\R{Z}'_i)}}_{ \underbrace{\log \sum_{i\in \R{B}'} e^{t(\R{Z}'_i)}}_{\text{(b)}} - \underbrace{\log \abs{\R{B}'}}_{\text{(c)}}} \bigg]
+\end{align}
+$$
+
+but on the minibatches 
+
+$$\R{Z}_{\R{B}}:=(\R{Z}_i\mid i\in \R{B})\quad \text{and}\quad \R{Z}'_{\R{B}'}$$
+
+where $\R{B}$ and $\R{B}'$ uniformly randomly and independently chosen from $[n]$ and $[n']$ respectively.
+
++++
+
+The method `step` updates the neural network parameters as
+
+$$\theta^{(i+1)} = \underbrace{\theta^{(i)} - s_i \overbrace{\nabla L(\theta^{(i)})}^{\text{(d)}}}_{\text{(f)}} $$
+
+1. by defining the `loss` $L$, 
+2. calling `loss.backward` to computes the gradient $\nabla L $ w.r.t the neural network parameters $\theta^{(i)}$, and
+3. updating the parameter to $\theta^{(i+1)}$ by descending along the negative gradient with a step size `s` dynamically chosen by the Adam's `optimizer`.
+
+```{code-cell} ipython3
+estimates = []
+```
+
+```{code-cell} ipython3
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter()
+Z = Tensor(XY).to(device)
+Z_ref = Tensor(XY_ref).to(device)
+```
+
+```{code-cell} ipython3
+n_epochs = 1
+batch_size = ref_batch_size = 100
+
+for i in range(n_epochs):
+    idx = torch.randperm(Z.shape[0])
+    for i in range(0, Z.shape[0], batch_size):
+        optimizer.zero_grad()
+        # obtain a random batch of samples
+        batch_Z = Z[idx[i:i+batch_size]]
+        batch_Z_ref = Z[idx[i:i+batch_size]]
+        # define loss as negative divergence lower bound from VD formula
+        avg_tZ = net(batch_Z).mean()  # (a)
+        avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(batch_Z_ref.shape[0]) # (b) - (c)
+        loss = -(avg_tZ - avg_etZ_ref) 
+        # gradient descent
+        loss.backward()  # (d)
+        optimizer.step() # (f)
+        writer.add_scalar('Loss/train', loss.item())
+```
+
+```{code-cell} ipython3
+%load_ext tensorboard
+%tensorboard --logdir=runs
+```
+
+```{code-cell} ipython3
+def step():
+    batch_size = ref_batch_size = 100
+    optimizer.zero_grad()
+    # obtain a random batch of samples
+    batch_Z = Tensor(resample_rng.choice(XY, size=batch_size)).to(device)
+    batch_Z_ref = Tensor(resample_rng.choice(XY_ref, size=ref_batch_size)).to(device)
+    # define loss as negative divergence lower bound from VD formula
+    avg_tZ = net(batch_Z).mean()  # (a)
+    avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(batch_Z_ref.shape[0]) # (b) - (c)
+    loss = -(avg_tZ - avg_etZ_ref) 
+    # gradient descent
+    loss.backward()  # (d)
+    optimizer.step() # (f)
+    
+def estimate():
+    estimates.append(-loss.item())
+```
+
+```{code-cell} ipython3
+ax = sns.lineplot(x=range(len(estimates)), y=estimates)
+ax.set(xlabel='n', ylabel='estimate', title=r'$D(P_{\mathsf{Z}}||P_{\mathsf{Z}})$ using VD formula')
+```
+
+```{code-cell} ipython3
+sns.lineplot(x=range(len(estimates)), y=estimates, estimator='mean', err_style='band')
+```
+
+```{code-cell} ipython3
+df_estimates = pd.DataFrame(estimates, name=')
+```
+
+### Classifier-based estimation
 
 +++ {"tags": []}
 
