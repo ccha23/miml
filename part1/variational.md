@@ -34,9 +34,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import torch
 import torch.optim as optim
 from IPython import display
-import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
@@ -559,14 +559,158 @@ When GPU is available, you can use GPU DASHBOARDS on the left to monitor GPU uti
 
 +++
 
-The following code defines a simple neural networks with 3 fully-connected (fc) hidden layers:
+**How to train a neural network by gradient descent?**
+
++++
+
+We will first consider a simple implementation.
+
++++
+
+### A simple implementation of gradient descent
+
++++
+
+For simplicity, suppose we want to apply gradient descend algorithm to solve
+
+$$ \inf_{w\in \mathbb{R}} \overbrace{e^{w\cdot z}}^{L(w):=}$$
+
+for a given $z\in \mathbb{R}$. This can be viewed as training a simple neural network with one parameter, namely, $w$, to minimize the loss function $L(w)$.
+
++++
+
+Consider $z=-1$ in particular. Then, 
+
+$$
+L(w) = e^{-w} \geq 0
+$$
+
+which is achievable with equality as $w\to \infty$. The following implements the loss function:
+
++++
+
+**How to implement the loss function?**
+
++++
+
+We will define the loss function using tensors:
+
+```{code-cell} ipython3
+z = Tensor([-1]).to(DEVICE)  # default tensor type on a designated device
+
+
+def L(w):
+    return (w * z).exp()
+
+
+L(float("inf"))
+```
+
+The function `L` is vectorized because Tensor follows the [broadcasting rules of `numpy`](https://numpy.org/doc/stable/user/basics.broadcasting.html):
+
+```{code-cell} ipython3
+ww = np.linspace(0, 10, 100)
+ax = sns.lineplot(
+    x=ww,
+    y=L(Tensor(ww).to(DEVICE)).cpu().numpy(),  # convert to numpy array for plotting
+)
+ax.set(xlabel=r"$w$", title=r"$L(w)=e^{-w}$")
+ax.axhline(L(float("inf")), ls="--", c="r")
+```
+
+**What is gradient descent?**
+
++++
+
+A gradient descent algorithm updates the parameter $w$ iteratively starting with some initial weight $w^{(0)}$ as follows:
+
+$$w^{(i+1)} = w^{(i)} - s^{(i)} \nabla L(w^{(i)}) \qquad \text{for }i\geq 0,$$
+
+where $s$ is a small step size (or *learning rate*). For simplicity, fix $s^{(i)}=0.001$ independent of $i$.
+
++++
+
+**How to compute the gradient?**
+
++++
+
+With $w^{(0)}=0$, 
+
+$$\nabla L(w^{(0)}) = \left.-e^{-w}\right|_{w=0}=-1,$$ 
+
+which can be computed using `backward` ([backpropagation][bp]):
+
+[bp]: https://en.wikipedia.org/wiki/Backpropagation
+
+```{code-cell} ipython3
+w = Tensor([0]).to(DEVICE).requires_grad_()  # requires gradient calculation for w
+L(w).backward()  # calculate the gradient by backpropagation
+w.grad
+```
+
+Under the hood, a computational graph is generated for backpropagation to the parameters that requires gradient calculations.
+
++++
+
+**How to implement the gradient descent?**
+
++++
+
+The following implements the gradient algorithm with a learning rate of `0.001`:
+
+```{code-cell} ipython3
+for i in range(1000):
+    w.grad = None  # zero the gradient to avoid accumulation
+    L(w).backward()
+    w.grad
+    with torch.no_grad():  # updates the weights in place without gradient calculation
+        w -= w.grad * 1e-3
+
+print("w:", w.item(), "\nL(w):", L(w).item())
+```
+
+[`with torch.no_grad():`][no_grad] sets up a context where computations are not recorded in the computational graph for backpropagation. The weight update, in particular, should not be differentiated in the subsequent calculate of the gradient.
+
+[no_grad]: https://pytorch.org/docs/stable/generated/torch.no_grad.html
+
++++
+
+---
+
+**Exercise** Repeatedly run the above cell until you get `L(w)` below `0.001`. How large is the value of `w`? What is the limitations of the simple gradient descent algorithm?
+
++++
+
+**Solution** The value of `w` needs to be smaller than `6.9`. The convergence can be slow, especially when the learning rate is small. Also, `w` can be far away from its optimal value even if `L(w)` is close to its minimum.
+
++++
+
+---
+
++++
+
+### A practical implementation
+
++++
+
+For a neural network to fit a sophisticated function, it needs to have many degrees of freedom, i.e., number of parameters.
+
++++
+
+**How to define a neural network?**
+
++++
+
+The following code [defines a simple neural networks][define] with 3 fully-connected (fc) hidden layers:
 
 ![Neural net](nn.dio.svg)
 
 where 
 
-- $\M{W}_{\ell}$ and $\M{b}_{\ell}$ are the weight and bias respectively for the linear transformation $\R{W}_l a_l + b_l$ of the $l$-th layer; and
+- $\M{W}_l$ and $\M{b}_l$ are the weight and bias respectively for the linear transformation $\R{W}_l a_l + b_l$ of the $l$-th layer; and
 - $\sigma$ for the first 2 hidden layers is an activation function chosen to be the [*exponential linear unit (ELU)*](https://pytorch.org/docs/stable/generated/torch.nn.ELU.html).
+
+[define]: https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#define-the-network
 
 ```{code-cell} ipython3
 class Net(nn.Module):
@@ -595,24 +739,6 @@ net.to(DEVICE)
 print(net)
 ```
 
-- https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#define-the-network
-
-+++
-
-`Net` is a subclass of `nn.Module` with the methods:
-
-- `__init__` that creates/initializes the neural network parameters, which is often organized into layers.
-- `forward` that computes an output from a given input using the neural network parameters.
-
-+++
-
-To compute $t(\M{z})$ at $\M{z}=\begin{bmatrix}0\\ 0\end{bmatrix}$:
-
-```{code-cell} ipython3
-z = Tensor([[0.0, 0]]).to(DEVICE)
-net(z)
-```
-
 The neural network is a vectorized function, i.e., we can pass in multiple values of $z$'s (along the first dimension) to obtain multiple $t(z)$'s. E.g., the following plots the density estimate of $t(\R{Z}_i)$'s and $t(\R{Z}'_i)$'s.
 
 ```{code-cell} ipython3
@@ -631,6 +757,7 @@ tZ = (
 
 tZ_df = pd.DataFrame(data=tZ, columns=["t"])
 sns.kdeplot(data=tZ_df, x="t")
+plt.show()
 ```
 
 ---
@@ -652,23 +779,30 @@ sns.kdeplot(data=tZ_df, x="t")
 
 +++
 
-We can use the neural network to compute the divergence lower bound in {eq}`DV` as follows:
+We can use the neural network to compute the approximate divergence lower bound in {eq}`avg-DV` as follows:
 
 +++
 
 $$
 \begin{align}
-D(P_{\R{Z}}\| P_{\R{Z}'})\approx \underbrace{\frac1{n} \sum_{i\in [n]} t(\R{Z}_i)}_{\text{(a)}} - \underbrace{\log \frac1{n'} \sum_{i\in [n']} e^{t(\R{Z}'_i)}}_{ \underbrace{\log \sum_{i\in [n']} e^{t(\R{Z}'_i)}}_{\text{(b)}} - \underbrace{\log n'}_{\text{(c)}}} 
+\R{L}(\theta) &:= \underbrace{\frac1{n} \sum_{i\in [n]} t(\R{Z}_i)}_{\text{(a)}} - \underbrace{\log \frac1{n'} \sum_{i\in [n']} e^{t(\R{Z}'_i)}}_{ \underbrace{\log \sum_{i\in [n']} e^{t(\R{Z}'_i)}}_{\text{(b)}} - \underbrace{\log n'}_{\text{(c)}}} 
 \end{align}
+$$
+
+where $\theta$ is a tuple of parameters (weights and biases) of the neural network that computes $t$:
+
+$$
+\theta := (\M{W}_l,\M{b}_l|l\in [3]).
 $$
 
 ```{code-cell} ipython3
 def DV(Z, Z_ref, net):
-    avg_tZ = net(Z).mean() # (a)
-    avg_etZ_ref = net(Z_ref).logsumexp(dim=0) - np.log(Z_ref.shape[0]) # (b) - (c)
+    avg_tZ = net(Z).mean()  # (a)
+    avg_etZ_ref = net(Z_ref).logsumexp(dim=0) - np.log(Z_ref.shape[0])  # (b) - (c)
     return avg_tZ - avg_etZ_ref
 
-DV(Z, Z_ref, net)
+
+DV_estimate = DV(Z, Z_ref, net)
 ```
 
 ---
@@ -677,7 +811,7 @@ DV(Z, Z_ref, net)
 
 +++
 
-N.b., `logsumexp(dim=0)` is numerically more stable than `.exp().mean().log()` especially when the output of the exponential function is too large to be represented by the default floating point type. This can lead to an overall value of `NaN`, even if the output after taking the `mean()` and `log()` is representable. 
+**Solution** `logsumexp(dim=0)` is numerically more stable than `.exp().mean().log()` especially when the output of the exponential function is too large to be represented by the default floating point type. This can lead to an overall value of `NaN`, even if the output after taking the `mean()` and `log()` is representable.
 
 +++
 
@@ -685,44 +819,154 @@ N.b., `logsumexp(dim=0)` is numerically more stable than `.exp().mean().log()` e
 
 +++
 
-Let $\theta$ be the tuple of parameters (weights and biases) of the neural network that computes $t$:
-
-$$
-\theta := (\M{W}_l,\M{b}_l|l\in [3])
-$$
-
-+++
-
-To calculate the gradient, we will use 
-
-+++
-
-To train the neural network, we will use the minibatch *Adam* gradient descend algorithm on a randomly choice batch of the samples.
+To calculate the gradient of the divergence estimate with respect to $\theta$:
 
 ```{code-cell} ipython3
-torch.manual_seed(SEED)
-writer = SummaryWriter() # create a new folder under runs/ for logging 
-optimizer = optim.Adam(net.parameters()) # learning rate (step size)
+net.zero_grad()  # zero the gradient 
+DV(Z, Z_ref, net).backward()  # calculate the gradient
+a_param = next(net.parameters())
+```
 
+`a_param` is a (module) parameter in $\theta$ retrieved from the parameter iterator `parameters()`. 
+
++++
+
+---
+
+**Exercise** Check the value of `a_param.grad` is non-zero. Is `a_param` a weight or a bias?
+
++++
+
+**Solution** It should be the weight matrix $\M{W}_1$ because the shape is `torch.Size([100, 2])`.
+
++++
+
+---
+
++++
+
+We will use the [*Adam's* gradient descend algorithm][adam] implemented as an optimizer [`optim.Adam`](optim.Adam):
+
+[adam]: https://en.wikipedia.org/wiki/Stochastic_gradient_descent#cite_note-Adam2014-28
+[optim.Adam]: https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
+
+```{code-cell} ipython3
+optimizer = optim.Adam(net.parameters())  # Allow Adam's optimizer to update the neural network parameters
+optimizer.step() # perform one step of the gradient descent
+```
+
+To alleviate the problem of overfitting, the gradient is often calculated on randomly chosen batches of the samples:
+
+![Minibatch gradient descent](batch.dio.svg) 
+
+```{code-cell} ipython3
 n_iters_per_epoch = 10  # ideally a divisor of both n and n'
 batch_size = int((Z.shape[0] + 0.5) / n_iters_per_epoch)
 batch_size_ref = int((Z_ref.shape[0] + 0.5) / n_iters_per_epoch)
-
-n_iter = n_epochs = 0 # keep counts for logging
 ```
 
-```{code-cell} ipython3
+We will use `tensorboard` to show the training logs. Rerun the following to create a new log, for instance, after a change of parameters.
 
+```{code-cell} ipython3
+n_iter = n_epochs = 0  # keep counts for logging
+writer = SummaryWriter()  # create a new folder under runs/ for logging
 ```
 
+The following code carries out Adam's gradient descent on batch loss:
+
+$$
+\begin{align}
+\R{L}(\theta) := - \bigg[\frac1{\abs{\R{B}}} \sum_{i\in \R{B}} t(\R{Z}_i) - \log \frac1{\abs{\R{B}'}} \sum_{i\in \R{B}'} e^{t(\R{Z}'_i)} - \log \abs{\R{B}'} \bigg],
+\end{align}
+$$
+
+which is the negative lower bound of the VD formula in {eq}`VD` but on the minibatches 
+
+$$\R{Z}_{\R{B}}:=(\R{Z}_i\mid i\in \R{B})\quad \text{and}\quad \R{Z}'_{\R{B}'}$$
+
+where $\R{B}$ and $\R{B}'$ are uniformly randomly chosen indices from $[n]$ and $[n']$ respectively.
+
 ```{code-cell} ipython3
-for i in range(100): # loop through entire data multiple times
+torch.manual_seed(SEED)
+
+for i in range(100):  # loop through entire data multiple times
     n_epochs += 1
-    # Random indices for selecting samples for all batches in one epoch 
+    # Random indices for selecting samples for all batches in one epoch
     idx = torch.randperm(Z.shape[0])
     idx_ref = torch.randperm(Z_ref.shape[0])
-    
-    for j in range(n_iters_per_epoch): # loop through multiple batches
+
+    for j in range(n_iters_per_epoch):  # loop through multiple batches
+        n_iter += 1
+        optimizer.zero_grad()
+        # obtain a random batch of samples
+        batch_Z = Z[idx[i : Z.shape[0] : batch_size]]
+        batch_Z_ref = Z_ref[idx_ref[i : Z_ref.shape[0] : batch_size_ref]]
+        # define loss as negative divergence lower bound from VD formula
+        loss = -DV(batch_Z, batch_Z_ref, net)
+        loss.backward()  # calculate gradient
+        optimizer.step() # descend
+
+    writer.add_scalar("Loss/train", loss.item(), global_step=n_epochs)
+
+# Estimate the divergence using all data
+writer.add_scalar("Div estimate", DV(Z, Z_ref, net).item(), global_step=n_epochs)
+```
+
+Run the following to show the losses and divergence estimate in `tensorboard`. You can rerun the above cell to train the neural network more.
+
+```{code-cell} ipython3
+%load_ext tensorboard
+%tensorboard --logdir=runs
+```
+
+```{code-cell} ipython3
+%tensorboard --logdir runs
+```
+
+```{code-cell} ipython3
+resample_rng = np.random.default_rng(SEED)  # RNG for minibatch sampling
+
+
+class DV:
+    def __init__(self, Z, Z_ref, batch_size=32, hidden_size=100, lr=1e-3):
+        self.Z, self.Z_ref = Z, Z_ref
+        self.lr, self.batch_size, setl.hidden_size = lr, batch_size, hidden_size
+        self.net = Net(Z.shape[1], input_size=Z.shape[1], hidden_size=hidden_size)
+        self.optimizer = optim.Adam(
+            self.net.parameters(), hidden_size=hidden_size, lr=lr
+        )
+
+    def step(self):
+        optimizer.zero_grad()
+
+        # obtain a random batch of samples
+        batch_Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(DEVICE)
+        batch_Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(DEVICE)
+
+        # define loss as negative divergence lower bound from VD formula
+        avg_tZ = net(batch_Z).mean()  # (a)
+        avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(
+            batch_Z_ref.shape[0]
+        )  # (b) - (c)
+        loss = -(avg_tZ - avg_etZ_ref)
+
+        # gradient descent
+        loss.backward()  # (d)
+        optimizer.step()  # (f)
+
+    def DV_bound(self, Z, Z_ref):
+        Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(DEVICE)
+        Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(DEVICE)
+```
+
+```{code-cell} ipython3
+for i in range(100):  # loop through entire data multiple times
+    n_epochs += 1
+    # Random indices for selecting samples for all batches in one epoch
+    idx = torch.randperm(Z.shape[0])
+    idx_ref = torch.randperm(Z_ref.shape[0])
+
+    for j in range(n_iters_per_epoch):  # loop through multiple batches
         n_iter += 1
         optimizer.zero_grad()
         # obtain a random batch of samples
@@ -737,33 +981,9 @@ for i in range(100): # loop through entire data multiple times
         # gradient descent
         loss.backward()  # (d)
         optimizer.step()  # (f)
-        
+
     writer.add_scalar("Loss/train", loss.item(), global_step=n_epochs)
 ```
-
-Define the batch loss function as the negative lower bound of the VD formula in {eq}`VD`:
-
-$$
-\begin{align}
-\R{L}(\theta) := - \bigg[\underbrace{\frac1{\abs{\R{B}}} \sum_{i\in \R{B}} t(\R{Z}_i)}_{\text{(a)}} - \underbrace{\log \frac1{\abs{\R{B}'}} \sum_{i\in \R{B}'} e^{t(\R{Z}'_i)}}_{ \underbrace{\log \sum_{i\in \R{B}'} e^{t(\R{Z}'_i)}}_{\text{(b)}} - \underbrace{\log \abs{\R{B}'}}_{\text{(c)}}} \bigg]
-\end{align}
-$$
-
-but on the minibatches 
-
-$$\R{Z}_{\R{B}}:=(\R{Z}_i\mid i\in \R{B})\quad \text{and}\quad \R{Z}'_{\R{B}'}$$
-
-where $\R{B}$ and $\R{B}'$ uniformly randomly and independently chosen from $[n]$ and $[n']$ respectively.
-
-+++
-
-The method `step` updates the neural network parameters as
-
-$$\theta^{(i+1)} = \underbrace{\theta^{(i)} - s_i \overbrace{\nabla L(\theta^{(i)})}^{\text{(d)}}}_{\text{(f)}} $$
-
-1. by defining the `loss` $L$, 
-2. calling `loss.backward` to computes the gradient $\nabla L $ w.r.t the neural network parameters $\theta^{(i)}$, and
-3. updating the parameter to $\theta^{(i+1)}$ by descending along the negative gradient with a step size `s` dynamically chosen by the Adam's `optimizer`.
 
 ```{code-cell} ipython3
 %load_ext tensorboard
@@ -834,7 +1054,11 @@ def estimate():
 
 ```{code-cell} ipython3
 ax = sns.lineplot(x=range(len(estimates)), y=estimates)
-ax.set(xlabel='n', ylabel='estimate', title=r'$D(P_{\mathsf{Z}}||P_{\mathsf{Z}})$ using VD formula')
+ax.set(
+    xlabel="n",
+    ylabel="estimate",
+    title=r"$D(P_{\mathsf{Z}}||P_{\mathsf{Z}})$ using VD formula",
+)
 ```
 
 ```{code-cell} ipython3
