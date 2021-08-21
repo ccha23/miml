@@ -5,9 +5,10 @@ parts:
   - caption: Part 1
 #     numbered: false
     chapters:
-    - file: part1/variational
+    - file: part1/Formulation
+    - file: part1/DonskerVaradhan
     - file: part1/ref
-  - caption: Part 2
+#   - caption: Part 2
 #     numbered: false
-    chapters:
-    - file: part2/VanillaVAE
+#     chapters:
+#     - file: part2/VanillaVAE
