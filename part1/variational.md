@@ -34,11 +34,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import torch.optim as optim
 from IPython import display
-from torch import nn, Tensor
+import torch
+from torch import Tensor, nn
 from torch.nn import functional as F
+from torch.utils.tensorboard import SummaryWriter
 
-
+%load_ext tensorboard
 %matplotlib inline
 SEED = 0
 ```
@@ -97,19 +100,24 @@ You may find more details below:
 
 +++
 
-You can also use 
-- `XY_rng?` to see the doctring such of `XY_rng`, and
-- `dir(XY_rng)` to see the available methods/properties `XY_rng.*`.
+---
 
-```{code-cell} ipython3
+**Tips**
+
+To learn about a python object in JupyterLab:
+
+- **Docstring**: 
+  - Move the cursor to the object and 
+    - click `Help->Show Contextual Help` or
+    - click `Shift-Tab` if you have limited screen space.
+- **Directory/Source**:
+  - Right click on a notebook and choose `New Console for Notebook`. 
+  - Run `dir(obj)` for a previously defined object `obj` To see the available methods/properties of `obj`.
+  - Run `obj??` to print the source code defining `obj`, if available.
+
 ---
-jupyter:
-  outputs_hidden: true
-tags: [remove-output]
----
-XY_rng?
-dir(XY_rng)
-```
+
++++
 
 ---
 
@@ -532,12 +540,9 @@ $$
 We will train a neural network with `torch` and use GPU if available:
 
 ```{code-cell} ipython3
-import torch
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# use GPU if available
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-if device == "cuda":  # print current GPU name if available
+if DEVICE == "cuda":  # print current GPU name if available
     print("Using GPU:", torch.cuda.get_device_name(torch.cuda.current_device()))
 ```
 
@@ -564,10 +569,6 @@ where
 - $\sigma$ for the first 2 hidden layers is an activation function chosen to be the [*exponential linear unit (ELU)*](https://pytorch.org/docs/stable/generated/torch.nn.ELU.html).
 
 ```{code-cell} ipython3
-from torch import nn
-from torch.nn import functional as F
-
-
 class Net(nn.Module):
     def __init__(self, input_size=2, hidden_size=100, sigma=0.02):
         super().__init__()
@@ -590,7 +591,7 @@ class Net(nn.Module):
 
 torch.manual_seed(SEED)  # seed RNG for PyTorch
 net = Net()
-net.to(device)
+net.to(DEVICE)
 print(net)
 ```
 
@@ -608,89 +609,137 @@ print(net)
 To compute $t(\M{z})$ at $\M{z}=\begin{bmatrix}0\\ 0\end{bmatrix}$:
 
 ```{code-cell} ipython3
-from torch import Tensor
-
-z = Tensor([[0.0, 0]]).to(device)
+z = Tensor([[0.0, 0]]).to(DEVICE)
 net(z)
 ```
 
-The neural network indeed computes a vectorized function. E.g., we can pass in the vector `XY` of $(\R{X},\R{Y})$ samples as input:
+The neural network is a vectorized function, i.e., we can pass in multiple values of $z$'s (along the first dimension) to obtain multiple $t(z)$'s. E.g., the following plots the density estimate of $t(\R{Z}_i)$'s and $t(\R{Z}'_i)$'s.
 
 ```{code-cell} ipython3
 :tags: []
 
-tXY = (
-    net(Tensor(XY).to(device))  # convert XY to tensor
+Z = Tensor(XY).to(DEVICE)
+Z_ref = Tensor(XY_ref).to(DEVICE)
+
+tZ = (
+    net(torch.cat((Z, Z_ref), dim=0))  # compute t(Z_i)'s and t(Z'_i)
+    # output needs to be converted back to an array on CPU for plotting
     .cpu()  # copy back to CPU
     .detach()  # detach from current graph (no gradient calculation)
     .numpy()  # convert output back to numpy
 )
+
+tZ_df = pd.DataFrame(data=tZ, columns=["t"])
+sns.kdeplot(data=tZ_df, x="t")
 ```
 
-- https://pytorch.org/docs/stable/generated/torch.no_grad.html
+---
 
 +++
 
-The output needs to be converted back to a `numpy` array on CPU so it can be plotted as follows:
+**Exercise** Why are the values concentrated around $0$?
+
++++
+
+**Solution** The values are all very close to $0$ as we have set a small variance `sigma=0.02` to initialize the neural network parameters: 
+
+- The linear transformation $\M{W}_l (\cdot) + \M{b}_l$ is close to $0$ for when the weight and bias are close to $0$. 
+- The ELU activation function $\sigma$ is also close to $0$ if its input is close to $0$.
+
++++
+
+---
+
++++
+
+We can use the neural network to compute the divergence lower bound in {eq}`DV` as follows:
+
++++
+
+$$
+\begin{align}
+D(P_{\R{Z}}\| P_{\R{Z}'})\approx \underbrace{\frac1{n} \sum_{i\in [n]} t(\R{Z}_i)}_{\text{(a)}} - \underbrace{\log \frac1{n'} \sum_{i\in [n']} e^{t(\R{Z}'_i)}}_{ \underbrace{\log \sum_{i\in [n']} e^{t(\R{Z}'_i)}}_{\text{(b)}} - \underbrace{\log n'}_{\text{(c)}}} 
+\end{align}
+$$
 
 ```{code-cell} ipython3
-cmap = "RdBu"
-ax = sns.scatterplot(data=XY_df, x="X", y="Y", c=tXY, cmap=cmap, s=10)
+def DV(Z, Z_ref, net):
+    avg_tZ = net(Z).mean() # (a)
+    avg_etZ_ref = net(Z_ref).logsumexp(dim=0) - np.log(Z_ref.shape[0]) # (b) - (c)
+    return avg_tZ - avg_etZ_ref
 
-# add a color bar
-norm = plt.Normalize(tXY.min(), tXY.max())
-sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-ax.figure.colorbar(sm)
-ax.set_title(r"$e^{t(X,Y)}$")
-plt.show()
+DV(Z, Z_ref, net)
 ```
 
-The values are all very close to $0$ as we have set a small variance `sigma=0.02` to initialize the neural network parameters.
+---
+
+**Exercise** Why is it preferrable to use `logsumexp(dim=0)` instead of `.exp().mean().log()`?
+
++++
+
+N.b., `logsumexp(dim=0)` is numerically more stable than `.exp().mean().log()` especially when the output of the exponential function is too large to be represented by the default floating point type. This can lead to an overall value of `NaN`, even if the output after taking the `mean()` and `log()` is representable. 
+
++++
+
+---
+
++++
+
+Let $\theta$ be the tuple of parameters (weights and biases) of the neural network that computes $t$:
+
+$$
+\theta := (\M{W}_l,\M{b}_l|l\in [3])
+$$
+
++++
+
+To calculate the gradient, we will use 
 
 +++
 
 To train the neural network, we will use the minibatch *Adam* gradient descend algorithm on a randomly choice batch of the samples.
 
 ```{code-cell} ipython3
-import torch.optim as optim
-resample_rng = np.random.default_rng(SEED) # RNG for minibatch sampling
+torch.manual_seed(SEED)
+writer = SummaryWriter() # create a new folder under runs/ for logging 
+optimizer = optim.Adam(net.parameters()) # learning rate (step size)
 
-class DV():
-    def __init__(self, Z, Z_ref, batch_size=32, hidden_size=100, lr=1e-3):
-        self.Z, self.Z_ref = Z, Z_ref
-        self.lr, self.batch_size, setl.hidden_size = lr, batch_size, hidden_size
-        self.net = Net(Z.shape[1], input_size=Z.shape[1], hidden_size=hidden_size)
-        self.optimizer = optim.Adam(self.net.parameters(), hidden_size=hidden_size, lr=lr)
-        
-    def step(self):
-        optimizer.zero_grad()
-    
-        # obtain a random batch of samples
-        batch_Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(device)
-        batch_Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(device)
-        
-        # define loss as negative divergence lower bound from VD formula
-        avg_tZ = net(batch_Z).mean()  # (a)
-        avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(batch_Z_ref.shape[0]) # (b) - (c)
-        loss = -(avg_tZ - avg_etZ_ref)
-        
-        # gradient descent
-        loss.backward()  # (d)
-        optimizer.step() # (f)
+n_iters_per_epoch = 10  # ideally a divisor of both n and n'
+batch_size = int((Z.shape[0] + 0.5) / n_iters_per_epoch)
+batch_size_ref = int((Z_ref.shape[0] + 0.5) / n_iters_per_epoch)
 
-    def DV_bound(self, Z, Z_ref):
-        Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(device)
-        Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(device)
-        
+n_iter = n_epochs = 0 # keep counts for logging
 ```
 
-Let $\theta$ be the tuple of parameters (weights and biases) of the neural network that computes $t$:
+```{code-cell} ipython3
 
-$$
-\theta := (\M{W}_l,\M{b}_l|\ell\in [3])
-$$
+```
 
-+++
+```{code-cell} ipython3
+for i in range(100): # loop through entire data multiple times
+    n_epochs += 1
+    # Random indices for selecting samples for all batches in one epoch 
+    idx = torch.randperm(Z.shape[0])
+    idx_ref = torch.randperm(Z_ref.shape[0])
+    
+    for j in range(n_iters_per_epoch): # loop through multiple batches
+        n_iter += 1
+        optimizer.zero_grad()
+        # obtain a random batch of samples
+        batch_Z = Z[idx[i : Z.shape[0] : batch_size]]
+        batch_Z_ref = Z_ref[idx_ref[i : Z_ref.shape[0] : batch_size_ref]]
+        # define loss as negative divergence lower bound from VD formula
+        avg_tZ = net(batch_Z).mean()  # (a)
+        avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(
+            batch_Z_ref.shape[0]
+        )  # (b) - (c)
+        loss = -(avg_tZ - avg_etZ_ref)
+        # gradient descent
+        loss.backward()  # (d)
+        optimizer.step()  # (f)
+        
+    writer.add_scalar("Loss/train", loss.item(), global_step=n_epochs)
+```
 
 Define the batch loss function as the negative lower bound of the VD formula in {eq}`VD`:
 
@@ -717,41 +766,48 @@ $$\theta^{(i+1)} = \underbrace{\theta^{(i)} - s_i \overbrace{\nabla L(\theta^{(i
 3. updating the parameter to $\theta^{(i+1)}$ by descending along the negative gradient with a step size `s` dynamically chosen by the Adam's `optimizer`.
 
 ```{code-cell} ipython3
-estimates = []
-```
-
-```{code-cell} ipython3
-from torch.utils.tensorboard import SummaryWriter
-
-writer = SummaryWriter()
-Z = Tensor(XY).to(device)
-Z_ref = Tensor(XY_ref).to(device)
-```
-
-```{code-cell} ipython3
-n_epochs = 1
-batch_size = ref_batch_size = 100
-
-for i in range(n_epochs):
-    idx = torch.randperm(Z.shape[0])
-    for i in range(0, Z.shape[0], batch_size):
-        optimizer.zero_grad()
-        # obtain a random batch of samples
-        batch_Z = Z[idx[i:i+batch_size]]
-        batch_Z_ref = Z[idx[i:i+batch_size]]
-        # define loss as negative divergence lower bound from VD formula
-        avg_tZ = net(batch_Z).mean()  # (a)
-        avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(batch_Z_ref.shape[0]) # (b) - (c)
-        loss = -(avg_tZ - avg_etZ_ref) 
-        # gradient descent
-        loss.backward()  # (d)
-        optimizer.step() # (f)
-        writer.add_scalar('Loss/train', loss.item())
-```
-
-```{code-cell} ipython3
 %load_ext tensorboard
 %tensorboard --logdir=runs
+```
+
+```{code-cell} ipython3
+%tensorboard --logdir runs
+```
+
+```{code-cell} ipython3
+resample_rng = np.random.default_rng(SEED)  # RNG for minibatch sampling
+
+
+class DV:
+    def __init__(self, Z, Z_ref, batch_size=32, hidden_size=100, lr=1e-3):
+        self.Z, self.Z_ref = Z, Z_ref
+        self.lr, self.batch_size, setl.hidden_size = lr, batch_size, hidden_size
+        self.net = Net(Z.shape[1], input_size=Z.shape[1], hidden_size=hidden_size)
+        self.optimizer = optim.Adam(
+            self.net.parameters(), hidden_size=hidden_size, lr=lr
+        )
+
+    def step(self):
+        optimizer.zero_grad()
+
+        # obtain a random batch of samples
+        batch_Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(DEVICE)
+        batch_Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(DEVICE)
+
+        # define loss as negative divergence lower bound from VD formula
+        avg_tZ = net(batch_Z).mean()  # (a)
+        avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(
+            batch_Z_ref.shape[0]
+        )  # (b) - (c)
+        loss = -(avg_tZ - avg_etZ_ref)
+
+        # gradient descent
+        loss.backward()  # (d)
+        optimizer.step()  # (f)
+
+    def DV_bound(self, Z, Z_ref):
+        Z = Tensor(resample_rng.choice(Z, size=self.batch_size)).to(DEVICE)
+        Z_ref = Tensor(resample_rng.choice(Z_ref, size=ref_batch_size)).to(DEVICE)
 ```
 
 ```{code-cell} ipython3
@@ -759,16 +815,19 @@ def step():
     batch_size = ref_batch_size = 100
     optimizer.zero_grad()
     # obtain a random batch of samples
-    batch_Z = Tensor(resample_rng.choice(XY, size=batch_size)).to(device)
-    batch_Z_ref = Tensor(resample_rng.choice(XY_ref, size=ref_batch_size)).to(device)
+    batch_Z = Tensor(resample_rng.choice(XY, size=batch_size)).to(DEVICE)
+    batch_Z_ref = Tensor(resample_rng.choice(XY_ref, size=ref_batch_size)).to(DEVICE)
     # define loss as negative divergence lower bound from VD formula
     avg_tZ = net(batch_Z).mean()  # (a)
-    avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(batch_Z_ref.shape[0]) # (b) - (c)
-    loss = -(avg_tZ - avg_etZ_ref) 
+    avg_etZ_ref = net(batch_Z_ref).logsumexp(0) - np.log(
+        batch_Z_ref.shape[0]
+    )  # (b) - (c)
+    loss = -(avg_tZ - avg_etZ_ref)
     # gradient descent
     loss.backward()  # (d)
-    optimizer.step() # (f)
-    
+    optimizer.step()  # (f)
+
+
 def estimate():
     estimates.append(-loss.item())
 ```
@@ -779,7 +838,7 @@ ax.set(xlabel='n', ylabel='estimate', title=r'$D(P_{\mathsf{Z}}||P_{\mathsf{Z}})
 ```
 
 ```{code-cell} ipython3
-sns.lineplot(x=range(len(estimates)), y=estimates, estimator='mean', err_style='band')
+sns.lineplot(x=range(len(estimates)), y=estimates, estimator="mean", err_style="band")
 ```
 
 ```{code-cell} ipython3
