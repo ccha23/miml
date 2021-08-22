@@ -1,0 +1,4 @@
+#!/bin/bash
+
+jupytext --from ipynb --to md:myst -o part1/Formulation.md part1/Formulation.ipynb
+perl -0777 -i -pe 's/---\s*\*\*(.*?)\*\*(.*)(\X*?)---/````{prf:\l$1}$2$3````/gm' part1/Formulation.md

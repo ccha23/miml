@@ -5,7 +5,7 @@ parts:
   - caption: Part 1
 #     numbered: false
     chapters:
-    - file: part1/Formulation
+    - file: part1/Formulation.md
     - file: part1/DonskerVaradhan
     - file: part1/ref
 #   - caption: Part 2
