@@ -1,13 +1,17 @@
 format: jb-book
-root: miml.ipynb
+root: miml
 
 parts: 
   - caption: Part 1
 #     numbered: false
     chapters:
     - file: part1/Formulation.md
-    - file: part1/DonskerVaradhan
-    - file: part1/ref
+    - file: part1/DonskerVaradhan.md
+    - file: part1/Training.md
+    
+  - caption: Appendices
+    chapters:
+    - file: ref.md
 #   - caption: Part 2
 #     numbered: false
 #     chapters:
