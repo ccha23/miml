@@ -147,7 +147,8 @@ Show using {eq}`Q->r` that the optimal solution satisfies the constraint stated 
 
 +++
 
-````{prf:proof}
+````{toggle}
+**Solution**
 
 The constraint on $r$ is obtained from the constraint on $Q\in \mc{P}(\mc{Z})$, i.e., with $dQ(z)=r(z)dP_{\R{Z}'}(z)$, 
 
@@ -194,6 +195,7 @@ Show that $r$ defined in {eq}`r->t` satisfies the constraint in {eq}`D1` for all
 
 +++
 
+````{toggle}
 **Solution** 
 
 $$
@@ -201,6 +203,8 @@ $$
 E\left[ \frac{e^{t(\R{Z}')}}{E[e^{t(\R{Z}')}]} \right] =  \frac{E\left[ e^{t(\R{Z}')} \right]}{E[e^{t(\R{Z}')}]} = 1.
 \end{align}
 $$
+
+````
 
 +++
 

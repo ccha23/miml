@@ -1,11 +1,26 @@
 #!/bin/bash
 
+for f in "part1/Formulation" "part1/DonskerVaradhan" "part1/Training"
+do
+    read -r -p "process ${f}?[Y/n] " input
+
+    case $input in
+        [yY][eE][sS]|[yY]|'')
+    echo "Executing..."
+    jupytext --from ipynb --to md:myst -o $f.md $f.ipynb
+    perl -0777 -i -pe 's/---\s*\*\*(.*?)\*\*(.*)(\X*?)---/````{prf:\l$1}$2$3````/gm' $f.md
+    perl -0777 -i -pe 's/(\*\*Solution\*\*\X*?)((?:\+\+\+|```|\Z))/````{toggle}\n$1````\n\n$2/gm' $f.md
+    ;;
+        [nN][oO]|[nN])
+    echo "Skipped..."
+        ;;
+        *)
+    echo "Invalid input..."
+    exit 1
+    ;;
+    esac
+done
 
 jupytext --from ipynb --to md:myst -o part1/Formulation.md part1/Formulation.ipynb
 perl -0777 -i -pe 's/---\s*\*\*(.*?)\*\*(.*)(\X*?)---/````{prf:\l$1}$2$3````/gm' part1/Formulation.md
-
-jupytext --from ipynb --to md:myst -o part1/DonskerVaradhan.md part1/DonskerVaradhan.ipynb
-perl -0777 -i -pe 's/---\s*\*\*(.*?)\*\*(.*)(\X*?)---/````{prf:\l$1}$2$3````/gm' part1/DonskerVaradhan.md
-
-jupytext --from ipynb --to md:myst -o part1/Training.md part1/Training.ipynb
-perl -0777 -i -pe 's/---\s*\*\*(.*?)\*\*(.*)(\X*?)---/````{prf:\l$1}$2$3````/gm' part1/Training.md
+perl -0777 -i -pe 's/(\*\*Solution\*\*\X*?)((?:\+\+\+|```|\Z))/````{toggle}\n$1````\n\n$2/gm' part1/Formulation.md

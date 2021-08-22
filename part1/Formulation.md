@@ -114,6 +114,7 @@ What is unknown about the above sampling distribution?
 
 +++ {"tags": ["hide-cell"]}
 
+````{toggle}
 **Solution**
 
 The density is
@@ -123,6 +124,8 @@ $$
 $$
 
 but $\rho$ is unknown (uniformly random over $[0.8,0.99)$).
+
+````
 
 +++
 
@@ -165,6 +168,8 @@ XY_ref = XY_ref_rng_ref.___(mean, ___, n_)
 ```
 
 ```{code-cell} ipython3
+:tags: [hide-cell]
+
 XY_ref_rng = np.random.default_rng(SEED)
 ### BEGIN SOLUTION
 cov_ref, n_ = [[1, 0], [0, 1]], n
@@ -214,9 +219,12 @@ Although $\R{X}^n$ and $\R{Y}^n$ for MI estimation should have the same length, 
 
 +++ {"slideshow": {"slide_type": "fragment"}, "tags": ["hide-cell"]}
 
+````{toggle}
 **Solution** 
 
 The dependency between $\R{Z}$ and $\R{Z}'$ does not affect the divergence.
+
+````
 
 +++ {"slideshow": {"slide_type": "subslide"}, "tags": []}
 
@@ -250,6 +258,7 @@ Show that $D_f(P_{\R{Z}}\|P_{\R{Z}'})\geq 0$ with equality iff $P_{\R{Z}}=P_{\R{
 
 +++
 
+````{toggle}
 **Solution**
 
 It is a valid divergence because, by Jensen's inequality,
@@ -259,6 +268,8 @@ D_f(P_{\R{Z}}\|P_{\R{Z}'}) \geq  f\bigg( \underbrace{E\left[ \frac{d P_{\R{Z}}(\
 $$
 
 with equality iff $P_{\R{Z}}=P_{\R{Z}'}$.
+
+````
 
 +++
 
