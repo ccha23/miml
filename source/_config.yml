@@ -70,13 +70,13 @@ latex:
 launch_buttons:
   notebook_interface        : jupyterlab  # The interface interactive links will activate ["classic", "jupyterlab"]
   jupyterhub_url            : https://dive.cs.cityu.edu.hk  # The URL of the JupyterHub (e.g., https://datahub.berkeley.edu)
-  binderhub_url             : https://mybinder.org  # The URL of the BinderHub (e.g., https://mybinder.org)
+  binderhub_url             : "" #https://mybinder.org  # The URL of the BinderHub (e.g., https://mybinder.org)
   thebe                     : false  # Add a thebe button to pages (requires the repository to run on Binder)
-  colab_url                 : https://colab.research.google.com # The URL of Google Colab (https://colab.research.google.com)
+  colab_url                 : "" #https://colab.research.google.com # The URL of Google Colab (https://colab.research.google.com)
   
 # Information about where the book exists on the web
 repository:
-  url: https://github.com/ccha23/miml  # Online location of your book
+  url: https://github.com/ccha23/cscit21  # Online location of your book
   path_to_book: ""  # An optional path to your book, defaults to repo root
   branch: main  # An optional branch, defaults to `master`
 html:

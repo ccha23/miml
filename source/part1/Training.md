@@ -87,7 +87,7 @@ We will train one parameter, namely, $w$, to minimize the loss $L(w)$.
 
 What is the solution for $z=-1$?
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "eg-min", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution**
@@ -208,7 +208,7 @@ should not be differentiated in the subsequent calculations of the gradient.
 
 Repeatedly run the above cell until you get `L(w)` below `0.001`. How large is the value of `w`? What is the limitations of the simple gradient descent algorithm?
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "gd-limitations", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 
 ````{toggle}
@@ -295,7 +295,7 @@ plt.show()
 
 Why are the values of $t(\R{Z}_i)$'s and $t(\R{Z}'_i)$'s concentrated around $0$?
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "init-nn", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution** 
@@ -349,7 +349,7 @@ Tensor([100]).exp().log(), Tensor([100]).logsumexp(0)
 
 in a separate console.
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "logsumexp", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution** 
@@ -376,7 +376,7 @@ a_param = next(net.parameters())
 
 Check that the value of `a_param.grad` is non-zero. Is `a_param` a weight or a bias?
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "param", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution** 
@@ -437,9 +437,10 @@ We will use `tensorboard` to show the training logs.
 Rerun the following to start a new log, for instance, after a change of parameters.
 
 ```{code-cell} ipython3
-n_iter = n_epochs = 0  # keep counts for logging
-writer = SummaryWriter()  # create a new folder under runs/ for logging
-torch.manual_seed(SEED) # for reproducibility
+if input('New log?[Y/n] ').lower() != 'n':
+    n_iter = n_epochs = 0  # keep counts for logging
+    writer = SummaryWriter()  # create a new folder under runs/ for logging
+    torch.manual_seed(SEED) # for reproducibility
 ```
 
 The following code carries out Adam's gradient descent on batch loss:

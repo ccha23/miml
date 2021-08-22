@@ -145,7 +145,7 @@ $
 
 Show using {eq}`Q->r` that the optimal solution satisfies the constraint stated in the supremum {eq}`D2`.
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "optional-r", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution**
@@ -193,7 +193,7 @@ $$ (r->t)
 
 Show that $r$ defined in {eq}`r->t` satisfies the constraint in {eq}`D1` for all real-valued function $t:\mc{Z}\to \mathbb{R}$.
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "r-t", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution** 

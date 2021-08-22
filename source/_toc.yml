@@ -1,5 +1,5 @@
 format: jb-book
-root: miml
+root: miml.ipynb
 
 parts: 
   - caption: Part 1

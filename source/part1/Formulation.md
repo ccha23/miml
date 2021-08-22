@@ -112,7 +112,7 @@ You can also get help directly in [JupyterLab](https://jupyterlab.readthedocs.io
 
 What is unknown about the above sampling distribution?
 
-+++ {"tags": ["hide-cell"]}
++++ {"nbgrader": {"grade": true, "grade_id": "unknown-distribution", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}, "tags": ["hide-cell"]}
 
 ````{toggle}
 **Solution**
@@ -168,8 +168,16 @@ XY_ref = XY_ref_rng_ref.___(mean, ___, n_)
 ```
 
 ```{code-cell} ipython3
-:tags: [hide-cell]
-
+---
+nbgrader:
+  grade: false
+  grade_id: sampling
+  locked: false
+  schema_version: 3
+  solution: true
+  task: false
+tags: [hide-cell]
+---
 XY_ref_rng = np.random.default_rng(SEED)
 ### BEGIN SOLUTION
 cov_ref, n_ = [[1, 0], [0, 1]], n
@@ -217,7 +225,7 @@ using
 
 Although $\R{X}^n$ and $\R{Y}^n$ for MI estimation should have the same length, $\R{Z}^n$ and ${\R{Z}'}^{n'}$ can have different lengths, i.e., $n \not\equiv n'$. Why?
 
-+++ {"slideshow": {"slide_type": "fragment"}, "tags": ["hide-cell"]}
++++ {"nbgrader": {"grade": true, "grade_id": "Z-Z_ref", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}, "slideshow": {"slide_type": "fragment"}, "tags": ["hide-cell"]}
 
 ````{toggle}
 **Solution** 
@@ -256,7 +264,7 @@ $$
 
 Show that $D_f(P_{\R{Z}}\|P_{\R{Z}'})\geq 0$ with equality iff $P_{\R{Z}}=P_{\R{Z}'}$ using Jensen's inequality and the properties of $f$.
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "divergence", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution**

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for cmd in "./preprocess" "jupyter-book build --path-output ~/www/miml ."
+for cmd in "./preprocess" "cp miml.ipynb ../release/" "jupyter-book build --path-output ~/www/miml ." "scp -r ~/www/miml/_build/html/* ccha23@gateway:~/www/miml/"
 do
     read -r -p "${cmd}?[Y/n] " input
 

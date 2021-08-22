@@ -11,4 +11,3 @@ XY = XY_rng.multivariate_normal(mean, cov, n)
 XY_ref_rng = np.random.default_rng(SEED)
 cov_ref, n_ = [[1, 0], [0, 1]], n
 XY_ref = XY_ref_rng.multivariate_normal(mean, cov_ref, n_)
-
