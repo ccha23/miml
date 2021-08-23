@@ -1,33 +1,18 @@
 import numpy as np
+import seaborn as sns
 import torch
 import torch.optim as optim
 from torch import Tensor, nn
 from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-SEED = 0
-
-# create samples
-XY_rng = np.random.default_rng(SEED)
-rho = 1 - 0.19 * XY_rng.random()
-mean, cov, n = [0, 0], [[1, rho], [rho, 1]], 1000
-XY = XY_rng.multivariate_normal(mean, cov, n)
-
-XY_ref_rng = np.random.default_rng(SEED)
-cov_ref, n_ = [[1, 0], [0, 1]], n
-XY_ref = XY_ref_rng.multivariate_normal(mean, cov_ref, n_)
-
-ground_truth = -0.5 * np.log(1 - rho ** 2)
-
-# set device
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
 
 # neural network
 class Net(nn.Module):
     def __init__(self, input_size=2, hidden_size=100, sigma=0.02):
         super().__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)  # fully-connected (fc) layer
+        # fully-connected (fc) layers
+        self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)  # layer 2
         self.fc3 = nn.Linear(hidden_size, 1)  # layer 3
         nn.init.normal_(self.fc1.weight, std=sigma)  #
@@ -53,13 +38,13 @@ def DV(Z, Z_ref, net):
 
 # DV train
 class DVTrainer:
-    def __init__(self, Z, Z_ref, net, n_iters_per_epoch, writer_params=None, **kwargs):
-        # set optimizer
-        self.optimizer = optim.Adam(self.net.parameters(), **kwargs)
-
+    def __init__(self, Z, Z_ref, net, n_iters_per_epoch, writer_params={}, **kwargs):
         self.Z = Z
         self.Z_ref = Z_ref
         self.net = net
+        
+        # set optimizer
+        self.optimizer = optim.Adam(net.parameters(), **kwargs)
 
         # batch sizes
         self.n_iters_per_epoch = n_iters_per_epoch  # ideally a divisor of both n and n'
@@ -95,9 +80,41 @@ class DVTrainer:
                 loss.backward()  # calculate gradient
                 self.optimizer.step()  # descend
 
-                self.writer.add_scaler("Loss/train", loss.item(), global_step=n_epoch)
+                self.writer.add_scalar("Loss/train", loss.item(), global_step=self.n_iter)
 
         with torch.no_grad():
-            estimate = DV(Z, Z_ref, net).item()
-            self.writer.add_scalar("Estimate", estimate, global_step=n_epoch)
+            estimate = DV(Z, Z_ref, self.net).item()
+            self.writer.add_scalar("Estimate", estimate, global_step=self.n_epoch)
             return estimate
+
+        
+def plot_samples_with_kde(df, **kwargs):
+    p = sns.PairGrid(df, **kwargs)
+    p.map_lower(sns.scatterplot, s=2)  # scatter plot of samples
+    p.map_upper(sns.kdeplot)  # kernel density estimate for pXY
+    p.map_diag(sns.kdeplot)  # kde for pX and pY
+    return p
+
+SEED = 0
+
+# set device
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# create samples
+XY_rng = np.random.default_rng(SEED)
+rho = 1 - 0.19 * XY_rng.random()
+mean, cov, n = [0, 0], [[1, rho], [rho, 1]], 1000
+XY = XY_rng.multivariate_normal(mean, cov, n)
+
+XY_ref_rng = np.random.default_rng(SEED)
+cov_ref, n_ = [[1, 0], [0, 1]], n
+XY_ref = XY_ref_rng.multivariate_normal(mean, cov_ref, n_)
+
+Z = Tensor(XY).to(DEVICE)
+Z_ref = Tensor(XY_ref).to(DEVICE)
+
+# create a neural network
+torch.manual_seed(SEED)
+net = Net().to(DEVICE)
+
+ground_truth = -0.5 * np.log(1 - rho ** 2)

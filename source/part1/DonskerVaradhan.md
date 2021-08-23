@@ -179,7 +179,7 @@ $$ (avg-D1)
 
 +++
 
-We can apply by a change of variable:
+We can apply a change of variable:
 
 $$
 \begin{align}
@@ -246,8 +246,10 @@ $$ (avg-DV)
 
 +++
 
-In summary, the neural estimation of KL divergence is a sample average of {eq}`D` but with the unknown density ratio replaced by {eq}`r->t` trained as a neural network to maximize the estimate.
+In summary, the neural estimation of KL divergence is a sample average of {eq}`D` but 
 
 $$
-D(P_{\R{Z}}\| P_{\R{Z}'}) = \underbrace{}_{\sup_{t}}\underbrace{E}_{\op{avg}} \bigg[ \log \underbrace{\frac{P_{\R{Z}}(\R{Z})}{P_{\R{Z}'}(\R{Z})}}_{\frac{e^{t(\R{Z})}}{\underbrace{E}_{\op{avg}}[e^{t(\R{Z}')}]}} \bigg].
+D(P_{\R{Z}}\| P_{\R{Z}'}) = \underset{\stackrel{\uparrow}\sup_t}{} \overbrace{E}^{\op{avg}} \bigg[ \log \underbrace{\frac{P_{\R{Z}}(\R{Z})}{P_{\R{Z}'}(\R{Z})}}_{\frac{e^{t(\R{Z})}}{\underbrace{E}_{\op{avg}}[e^{t(\R{Z}')}]}} \bigg].
 $$
+
+but with the unknown density ratio replaced by {eq}`r->t` trained as a neural network.

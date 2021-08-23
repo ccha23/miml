@@ -469,7 +469,7 @@ The following code carries out Adam's gradient descent on batch loss:
 
 ```{code-cell} ipython3
 if input("Train? [Y/n]").lower() != "n":
-    for i in range(100):  # loop through entire data multiple times
+    for i in range(10):  # loop through entire data multiple times
         n_epoch += 1
 
         # random indices for selecting samples for all batches in one epoch
@@ -537,6 +537,113 @@ ground_truth
 See if you can get an estimate close to this value by training the neural network repeatedly.
 
 +++
+
+## Encapsulation
+
++++
+
+It is a good idea to encapsulate the training by a class, so multiple configurations can be run without infering each other:
+
+```{code-cell} ipython3
+class DVTrainer:
+    """
+    Neural estimator for KL divergence based on the sample DV lower bound.
+
+    Estimate D(P_Z||P_Z') using samples Z and Z' by training a network t to maximize
+        avg(t(Z)) - log avg(e^t(Z'))
+
+    parameters:
+    ----------
+
+    Z, Z_ref : Tensors with first dimension indicing the samples of Z and Z' respect.
+    net : The neural network t that take Z as input and output a real number for each sample.
+    n_iters_per_epoch : Number of iterations per epoch.
+    writer_params : Parameters to be passed to SummaryWriter for logging.
+    """
+
+    # constructor
+    def __init__(self, Z, Z_ref, net, n_iters_per_epoch, writer_params={}, **kwargs):
+        self.Z = Z
+        self.Z_ref = Z_ref
+        self.net = net
+
+        # set optimizer
+        self.optimizer = optim.Adam(net.parameters(), **kwargs)
+
+        # batch sizes
+        self.n_iters_per_epoch = n_iters_per_epoch  # ideally a divisor of both n and n'
+        self.batch_size = int((Z.shape[0] + 0.5) / n_iters_per_epoch)
+        self.batch_size_ref = int((Z_ref.shape[0] + 0.5) / n_iters_per_epoch)
+
+        # logging
+        self.writer = SummaryWriter(
+            **writer_params
+        )  # create a new folder under runs/ for logging
+        self.n_iter = self.n_epoch = 0  # keep counts for logging
+
+    def step(self, epochs=1):
+        """
+        Carries out the gradient descend for a number of epochs and returns 
+        the divergence estimate evaluated over the entire data.
+
+        Loss for each epoch is recorded into the log, but only one divergence 
+        estimate is computed/logged using the entire dataset. Rerun the method,
+        using a loop, to continue to train the neural network and log the result.
+
+        Parameters:
+        ----------
+        epochs : number of epochs
+        """
+        for i in range(epochs):
+            self.n_epoch += 1
+
+            # random indices for selecting samples for all batches in one epoch
+            idx = torch.randperm(self.Z.shape[0])
+            idx_ref = torch.randperm(self.Z_ref.shape[0])
+
+            for j in range(self.n_iters_per_epoch):
+                self.n_iter += 1
+                self.optimizer.zero_grad()
+
+                # obtain a random batch of samples
+                batch_Z = self.Z[idx[i : self.Z.shape[0] : self.batch_size]]
+                batch_Z_ref = self.Z_ref[
+                    idx_ref[i : self.Z_ref.shape[0] : self.batch_size_ref]
+                ]
+
+                # define the loss as negative DV divergence lower bound
+                loss = -DV(batch_Z, batch_Z_ref, self.net)
+                loss.backward()  # calculate gradient
+                self.optimizer.step()  # descend
+
+                self.writer.add_scalar("Loss/train", loss.item(), global_step=self.n_iter)
+
+        with torch.no_grad():
+            estimate = DV(Z, Z_ref, self.net).item()
+            self.writer.add_scalar("Estimate", estimate, global_step=self.n_epoch)
+            return estimate
+```
+
+To use the above class to train, we first create an instance:
+
+```{code-cell} ipython3
+torch.manual_seed(SEED)
+net = Net().to(DEVICE)
+trainer = DVTrainer(Z, Z_ref, net, n_iters_per_epoch=10)
+```
+
+Next, we run `step` iteractively to train the neural network:
+
+```{code-cell} ipython3
+if input("Train? [Y/n]").lower() != "n":
+    for i in range(10):
+        trainer.step(10)
+    plot_net_2(net)
+```
+
+```{code-cell} ipython3
+%tensorboard --logdir=runs
+```
 
 ## Clean-up
 
