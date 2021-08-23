@@ -1,0 +1,103 @@
+import numpy as np
+import torch
+import torch.optim as optim
+from torch import Tensor, nn
+from torch.nn import functional as F
+from torch.utils.tensorboard import SummaryWriter
+
+SEED = 0
+
+# create samples
+XY_rng = np.random.default_rng(SEED)
+rho = 1 - 0.19 * XY_rng.random()
+mean, cov, n = [0, 0], [[1, rho], [rho, 1]], 1000
+XY = XY_rng.multivariate_normal(mean, cov, n)
+
+XY_ref_rng = np.random.default_rng(SEED)
+cov_ref, n_ = [[1, 0], [0, 1]], n
+XY_ref = XY_ref_rng.multivariate_normal(mean, cov_ref, n_)
+
+ground_truth = -0.5 * np.log(1 - rho ** 2)
+
+# set device
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+# neural network
+class Net(nn.Module):
+    def __init__(self, input_size=2, hidden_size=100, sigma=0.02):
+        super().__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)  # fully-connected (fc) layer
+        self.fc2 = nn.Linear(hidden_size, hidden_size)  # layer 2
+        self.fc3 = nn.Linear(hidden_size, 1)  # layer 3
+        nn.init.normal_(self.fc1.weight, std=sigma)  #
+        nn.init.constant_(self.fc1.bias, 0)
+        nn.init.normal_(self.fc2.weight, std=sigma)
+        nn.init.constant_(self.fc2.bias, 0)
+        nn.init.normal_(self.fc3.weight, std=sigma)
+        nn.init.constant_(self.fc3.bias, 0)
+
+    def forward(self, z):
+        a1 = F.elu(self.fc1(z))
+        a2 = F.elu(self.fc2(a1))
+        t = self.fc3(a2)
+        return t
+
+
+# sample DV lower bound
+def DV(Z, Z_ref, net):
+    avg_tZ = net(Z).mean()  # (a)
+    avg_etZ_ref = net(Z_ref).logsumexp(dim=0) - np.log(Z_ref.shape[0])  # (b) - (c)
+    return avg_tZ - avg_etZ_ref
+
+
+# DV train
+class DVTrainer:
+    def __init__(self, Z, Z_ref, net, n_iters_per_epoch, writer_params=None, **kwargs):
+        # set optimizer
+        self.optimizer = optim.Adam(self.net.parameters(), **kwargs)
+
+        self.Z = Z
+        self.Z_ref = Z_ref
+        self.net = net
+
+        # batch sizes
+        self.n_iters_per_epoch = n_iters_per_epoch  # ideally a divisor of both n and n'
+        self.batch_size = int((Z.shape[0] + 0.5) / n_iters_per_epoch)
+        self.batch_size_ref = int((Z_ref.shape[0] + 0.5) / n_iters_per_epoch)
+
+        # logging
+        self.writer = SummaryWriter(
+            **writer_params
+        )  # create a new folder under runs/ for logging
+        self.n_iter = self.n_epoch = 0  # keep counts for logging
+
+    def step(self, epochs=1):
+        for i in range(epochs):
+            self.n_epoch += 1
+
+            # random indices for selecting samples for all batches in one epoch
+            idx = torch.randperm(self.Z.shape[0])
+            idx_ref = torch.randperm(self.Z_ref.shape[0])
+
+            for j in range(self.n_iters_per_epoch):
+                self.n_iter += 1
+                self.optimizer.zero_grad()
+
+                # obtain a random batch of samples
+                batch_Z = self.Z[idx[i : self.Z.shape[0] : self.batch_size]]
+                batch_Z_ref = self.Z_ref[
+                    idx_ref[i : self.Z_ref.shape[0] : self.batch_size_ref]
+                ]
+
+                # define the loss as negative DV divergence lower bound
+                loss = -DV(batch_Z, batch_Z_ref, self.net)
+                loss.backward()  # calculate gradient
+                self.optimizer.step()  # descend
+
+                self.writer.add_scaler("Loss/train", loss.item(), global_step=n_epoch)
+
+        with torch.no_grad():
+            estimate = DV(Z, Z_ref, net).item()
+            self.writer.add_scalar("Estimate", estimate, global_step=n_epoch)
+            return estimate

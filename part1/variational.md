@@ -827,7 +827,7 @@ DV(Z, Z_ref, net).backward()  # calculate the gradient
 a_param = next(net.parameters())
 ```
 
-`a_param` is a (module) parameter in $\theta$ retrieved from the parameter iterator `parameters()`. 
+`a_param` is a (module) parameter in $\theta$ retrieved from the parameter iterator `parameters()`.
 
 +++
 
@@ -857,7 +857,7 @@ optimizer.step() # perform one step of the gradient descent
 
 To alleviate the problem of overfitting, the gradient is often calculated on randomly chosen batches of the samples:
 
-![Minibatch gradient descent](batch.dio.svg) 
+![Minibatch gradient descent](batch.dio.svg)
 
 ```{code-cell} ipython3
 n_iters_per_epoch = 10  # ideally a divisor of both n and n'
@@ -1463,7 +1463,9 @@ def plot_resampled_data_with_replacement(
 
 **Solution** The samples are identically distributed. However, they are not independent except in the trivial case $n=1$ or $n'=1$, regardless of whether the sample is with replacement or not. Consider $n=1$ and $n'=2$ as an example.
 
-+++
+```{code-cell} ipython3
+
+```
 
 ---
 

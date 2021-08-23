@@ -163,7 +163,7 @@ Complete the following code by replacing the blanks `___` so that `XY_ref` store
 ```Python
 ...
 cov_ref, n_ = ___, n
-XY_ref = XY_ref_rng_ref.___(mean, ___, n_)
+XY_ref = XY_ref_rng.___(mean, ___, n_)
 ...
 ```
 

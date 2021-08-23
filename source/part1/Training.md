@@ -265,8 +265,7 @@ class Net(nn.Module):
 
 
 torch.manual_seed(SEED)  # seed RNG for PyTorch
-net = Net()
-net.to(DEVICE)
+net = Net().to(DEVICE)
 print(net)
 ```
 
@@ -289,6 +288,27 @@ tZ = (
 tZ_df = pd.DataFrame(data=tZ, columns=["t"])
 sns.kdeplot(data=tZ_df, x="t")
 plt.show()
+```
+
+For 2D sample $(x,y)\in \mc{Z}$, we can plot the neural network $t(x,y)$ as a heatmap:
+
+```{code-cell} ipython3
+:tags: []
+
+def plot_net_2(net, xmin=-5, xmax=5, ymin=-5, ymax=5, xgrids=50, ygrids=50, ax=None):
+    """Plot a heat map of a neural network net. net can only have two inputs."""
+    x, y = np.mgrid[xmin : xmax : xgrids * 1j, ymin : ymax : ygrids * 1j]
+    xy = np.concatenate((x[:, :, None], y[:, :, None]), axis=2)
+    with torch.no_grad():
+        z = net(Tensor(xy).to(DEVICE))[:, :, 0].cpu()
+    if ax is None:
+        ax = plt.gca()
+    im = ax.pcolormesh(x, y, z, cmap="RdBu_r", shading="auto")
+    ax.figure.colorbar(im)
+    ax.set(xlabel=r"$x$", ylabel=r"$y$", title=r"Heatmap of $t(x,y)$")
+
+
+plot_net_2(net)
 ```
 
 **Exercise** 
@@ -397,8 +417,11 @@ We will use the [*Adam's* gradient descend algorithm][adam] implemented as an op
 [optimAdam]: https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
 
 ```{code-cell} ipython3
-optimizer = optim.Adam(net.parameters())  # Allow Adam's optimizer to update the neural network parameters
-optimizer.step() # perform one step of the gradient descent
+net = Net().to(DEVICE)
+optimizer = optim.Adam(
+    net.parameters(), lr=1e-3
+)  # Allow Adam's optimizer to update the neural network parameters
+optimizer.step()  # perform one step of the gradient descent
 ```
 
 To alleviate the problem of overfitting, the gradient is often calculated on randomly chosen batches:
@@ -438,58 +461,82 @@ Rerun the following to start a new log, for instance, after a change of paramete
 
 ```{code-cell} ipython3
 if input('New log?[Y/n] ').lower() != 'n':
-    n_iter = n_epochs = 0  # keep counts for logging
+    n_iter = n_epoch = 0  # keep counts for logging
     writer = SummaryWriter()  # create a new folder under runs/ for logging
-    torch.manual_seed(SEED) # for reproducibility
 ```
 
 The following code carries out Adam's gradient descent on batch loss:
 
 ```{code-cell} ipython3
-if input('Train? [Y/n]').lower() != 'n':
+if input("Train? [Y/n]").lower() != "n":
     for i in range(100):  # loop through entire data multiple times
-        n_epochs += 1
-        # Random indices for selecting samples for all batches in one epoch
+        n_epoch += 1
+
+        # random indices for selecting samples for all batches in one epoch
         idx = torch.randperm(Z.shape[0])
         idx_ref = torch.randperm(Z_ref.shape[0])
 
         for j in range(n_iters_per_epoch):  # loop through multiple batches
             n_iter += 1
             optimizer.zero_grad()
+
             # obtain a random batch of samples
             batch_Z = Z[idx[i : Z.shape[0] : batch_size]]
             batch_Z_ref = Z_ref[idx_ref[i : Z_ref.shape[0] : batch_size_ref]]
-            # define loss as negative divergence lower bound from VD formula
+
+            # define the loss as negative DV divergence lower bound
             loss = -DV(batch_Z, batch_Z_ref, net)
             loss.backward()  # calculate gradient
-            optimizer.step() # descend
+            optimizer.step()  # descend
 
-        writer.add_scalar("Loss/train", loss.item(), global_step=n_epochs)
+        writer.add_scalar("Loss/train", loss.item(), global_step=n_epoch)
 
     # Estimate the divergence using all data
     with torch.no_grad():
-        writer.add_scalar("Div estimate", DV(Z, Z_ref, net).item(), global_step=n_epochs)
+        estimate = DV(Z, Z_ref, net).item()
+        writer.add_scalar("Estimate", estimate, global_step=n_epoch)
+        plot_net_2(net)
+        print('Divergence estimation:', estimate)
 ```
 
 Run the following to show the losses and divergence estimate in `tensorboard`. You can rerun the above cell to train the neural network more.
 
 ```{code-cell} ipython3
-if input('Run tensorboard? [Y/n]').lower() != 'n': 
-    %tensorboard --logdir=runs
+%tensorboard --logdir=runs
+```
+
+The ground truth is given by
+
+$$D(P_{\R{Z}}\|P_{\R{Z}'}) = \frac12 \log(1-\rho^2) $$
+
+where $\rho$ is the randomly generated correlation in the previous notebook. 
+
++++
+
+**Exercise** Compute the ground truth using the formula above.
+
+```{code-cell} ipython3
+---
+nbgrader:
+  grade: false
+  grade_id: ground_truth
+  locked: false
+  schema_version: 3
+  solution: true
+  task: false
+tags: [hide-cell]
+---
+### BEGIN SOLUTION
+ground_truth = -0.5*np.log(1-rho**2)
+### END SOLUTION
+ground_truth
 ```
 
 **Exercise** 
 
-The ground truth of is given by
+See if you can get an estimate close to this value by training the neural network repeatedly.
 
-$$D(P_{\R{Z}}\|P_{\R{Z}'}) = \frac12 \log(1-\rho^2) $$
-
-where $\rho$ is the randomly generated correlation in the previous notebook. See if you can get an estimate close to this value by training the neural network repeatedly.
-
-```{code-cell} ipython3
-ground_truth = -0.5*np.log(1-rho**2)
-ground_truth
-```
++++
 
 ## Clean-up
 
