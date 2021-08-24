@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for f in "part1/Formulation" "part1/DonskerVaradhan" "part1/Training"
+for f in "part1/Formulation" "part1/DonskerVaradhan" "part1/Training" "part1/f-Divergence"
 do
     read -r -p "process ${f}?[Y/n] " input
 

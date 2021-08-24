@@ -8,6 +8,7 @@ parts:
     - file: part1/Formulation.md
     - file: part1/DonskerVaradhan.md
     - file: part1/Training.md
+    - file: part1/f-Divergence.md
     
   - caption: Appendices
     chapters:

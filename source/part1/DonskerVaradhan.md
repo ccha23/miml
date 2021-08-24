@@ -29,7 +29,7 @@ $\def\abs#1{\left\lvert #1 \right\rvert}
 
 +++
 
-Estimating MI well neither require nor imply the divergence/density to be estimated well. However, 
+Estimating MI well neither requires nor implies the divergence/density to be estimated well. However, 
 - MI estimation is often not the end goal, but an objective to train a neural network to return the divergence/density. 
 - The features/representations learned by the neural network may be applicable to different downstream inference tasks.
 
@@ -44,6 +44,7 @@ To explain the idea of neural estimation, consider the following characterizatio
 +++
 
 ````{prf:proposition}  
+:label: DV1
 
 $$
 \begin{align}
@@ -124,7 +125,8 @@ which absorbs the unknown reference into the parameter.
 
 +++
 
-````{prf:proposition}
+````{prf:proposition}  
+:label: DV2
 
 $$
 \begin{align}

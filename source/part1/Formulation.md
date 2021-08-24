@@ -306,7 +306,7 @@ $$ (dP-ratio)
 
 +++
 
-or estimate the density defined respective to some reference measure $\mu$:
+or estimate the density defined with respective to some reference measure $\mu$:
 
 $$
 \begin{align}
