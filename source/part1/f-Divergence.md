@@ -282,7 +282,21 @@ $$ (convex-conjugate1)
 
 +++
 
-The proof is illustrated in the following figure.
+````{prf:proof}
+
+Note that the supremums in {eq}`convex-conjugate1` and {eq}`convex-conjugate2` are [Fenchel-Legendre transforms][FL]. Denoting the transform as $[\cdot]^*$,
+
+$$\underbrace{[[F]^*]^*}_{=F}\left[\frac{dP_{\R{Z}}}{dP_{\R{Z}'}}\right]$$
+
+which gives {eq}`convex-conjugate2` by expanding the outer/later transform. The equality is by the property that Fenchel-Legendre transform is its own inverse for strictly convex functional $F$.
+
+[FL]: https://en.wikipedia.org/wiki/Convex_conjugate
+
+````
+
++++
+
+The proof is illustrated in the following figure:
 
 +++
 
@@ -290,17 +304,72 @@ The proof is illustrated in the following figure.
 
 +++
 
-````{prf:proof}
+Let's breakdown the details:
 
-Note that the supremums in {eq}`convex-conjugate1` and {eq}`convex-conjugate2` are [Fenchel-Legendre transforms][FL]. Denoting the transform as $[\cdot]^*$,
++++
 
-$$\underbrace{[[F]^*]^*}_{=F}\left[\frac{dP_{\R{Z}}}{dP_{\R{Z}'}}\right]$$
+**Step 1**
 
-which gives {eq}`convex-conjugate2` by expanding the outer/later transform. The equality is by the property that Fenchel-Legendre transform is its own inverse for convex function $F$.
+For the purpose of the illustration, visualize the convex functional $F$ simply as a curve in 2D.
 
-[FL]: https://en.wikipedia.org/wiki/Convex_conjugate
+![$f$-Divergence 1](f-D-Copy1.dio.svg)  
+
+The $f$-divergence is then the $y$-coordinate of a point on the curve indicated above, with $r$ being the density ratio $\frac{dP_{\R{Z}}}{dP_{\R{Z}'}}$.
+
++++
+
+**Step 2**
+
+To obtain a lower bound on $F$, consider any tangent of the curve with an arbitrary slope $t\cdot dP_{\R{Z}'}$
+
+![$f$-Divergence 2](f-D-Copy2.dio.svg)
+
+The lower bound is given by the $y$-coordinate of a point on the tangent with $r$ being the density ratio.
+
++++
+
+**Exercise**
+
+Why is the $y$-coordinate of the tangent a lower bound on the $f$-divergence?
+
++++
+
+````{toggle}
+**Solution**
+
+By the convexity of $F$, the tangent must be below $F$.
 
 ````
+
++++
+
+**Step 3**
+
+To calculate the lower bound, denote the $y$-intercept as $-F^*[t]$:
+
+![$f$-Divergence 3](f-D-Copy3.dio.svg)  
+
+Thinking of a function as nothing but a vector, the displacement from the $y$-intercept to the lower bound is given by the inner product of the slope and the density ratio. 
+
++++
+
+**Step 4**
+
+To make the bound tight, maximize the bound over the choice of the slope or $t$:
+
+![$f$-Divergence 4](f-D-Copy4.dio.svg) 
+
+This gives the bound in {eq}`convex-conjugate2`. It remains to show {eq}`convex-conjugate1`.
+
++++
+
+**Step 5**
+
+To compute the $y$-intercept or $F^*[t]$, let $r^*$ be the value of $r$ where the tangent touches the convex curve:
+
+![$f$-Divergence 5](f-D.dio.svg) 
+
+The displacement from the point at $r^*$ to the $y$-intercept can be computed as the inner product of the slope and $r^*$.
 
 +++
 

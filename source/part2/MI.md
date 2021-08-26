@@ -158,7 +158,7 @@ Note however that the sampling is without replacement.
 
 Sampling without replacement has an important restriction $n'\leq n$. Why?
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "without-replacement", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution**
@@ -172,8 +172,16 @@ To allow $n>n'$, at least one sample $(\R{X}_i,\R{Y}_i)$ needs to be sampled mor
 **Exercise** To allow $n>n'$, complete the following code to sample with replacement and observe what happens when $n \gg n'$.
 
 ```{code-cell} ipython3
-:tags: [hide-cell]
-
+---
+nbgrader:
+  grade: false
+  grade_id: resample
+  locked: false
+  schema_version: 3
+  solution: true
+  task: false
+tags: [hide-cell]
+---
 @widgets.interact
 def plot_resampled_data_with_replacement(
     n_=widgets.IntSlider(n, 2, 10 * n, continuous_update=False)
@@ -194,7 +202,7 @@ def plot_resampled_data_with_replacement(
 
 Explain whether the resampling trick gives i.i.d. samples $(\R{X}_{\R{J}_i},\R{Y}_{\R{K}_i})$ for the cases with replacement and without replacement respectively?
 
-+++ {"slideshow": {"slide_type": "fragment"}, "tags": ["hide-cell"]}
++++ {"nbgrader": {"grade": true, "grade_id": "non-iid", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}, "slideshow": {"slide_type": "fragment"}, "tags": ["hide-cell"]}
 
 ````{toggle}
 **Solution** 
