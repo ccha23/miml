@@ -45,7 +45,7 @@ $$
 
 How to estimate $f$-divergence using the DV formula?
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "DV-f-D", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution**
@@ -93,7 +93,8 @@ The idea is to think of the $f$-divergence as a convex *function(al)* evaluated 
 
 +++
 
-````{prf:proposition}
+````{prf:proposition}  
+:label: D->F
 
 $f$-divergence {eq}`f-D` is
 
@@ -140,7 +141,7 @@ $$ (KL:F)
 
 **Exercise** When is $F[r]=0$ equal to $0$?
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "zero-F", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution** 
@@ -214,7 +215,7 @@ is maximizing a concave function and therefore has a unique solution, namely, $r
 
 Is KL divergence concave or convex in the density ratio $\frac{dP_{\R{Z}}}{dP_{\R{Z}'}}$? Note that $F$ defined in {eq}`KL:F` is convex in $r$.
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "rev-KL", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution**
@@ -260,7 +261,8 @@ The following is a generalization of DV formula for estimating $f$-divergence {c
 
 +++
 
-````{prf:proposition}
+````{prf:proposition}  
+:label: convex-conjugate
 
 $$
 \begin{align}
@@ -310,7 +312,7 @@ $$F^*[t]=\log E[e^{t(\R{Z}')}]$$
 
 with $\mc{R}=\Set{r:\mc{Z}\to \mathbb{R}_+}$ and so {eq}`convex-conjugate2` gives the DV formula {eq}`DV` as a special case.
 
-+++
++++ {"nbgrader": {"grade": true, "grade_id": "f-D_KL", "locked": false, "points": 1, "schema_version": 3, "solution": true, "task": false}}
 
 ````{toggle}
 **Solution**

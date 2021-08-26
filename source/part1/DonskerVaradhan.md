@@ -214,7 +214,8 @@ Substituting {eq}`r->t` into {eq}`D1` gives the well-known *Donsker-Varadhan (DV
 
 +++
 
-````{prf:corollary} Donsker-Varadhan
+````{prf:corollary} Donsker-Varadhan  
+:label: DV3
 
 $$
 \begin{align}

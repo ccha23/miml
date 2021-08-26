@@ -38,11 +38,27 @@ def DV(Z, Z_ref, net):
 
 # DV train
 class DVTrainer:
+    """
+    Neural estimator for KL divergence based on the sample DV lower bound.
+
+    Estimate D(P_Z||P_Z') using samples Z and Z' by training a network t to maximize
+        avg(t(Z)) - log avg(e^t(Z'))
+
+    parameters:
+    ----------
+
+    Z, Z_ref : Tensors with first dimension indicing the samples of Z and Z' respect.
+    net : The neural network t that take Z as input and output a real number for each sample.
+    n_iters_per_epoch : Number of iterations per epoch.
+    writer_params : Parameters to be passed to SummaryWriter for logging.
+    """
+
+    # constructor
     def __init__(self, Z, Z_ref, net, n_iters_per_epoch, writer_params={}, **kwargs):
         self.Z = Z
         self.Z_ref = Z_ref
         self.net = net
-        
+
         # set optimizer
         self.optimizer = optim.Adam(net.parameters(), **kwargs)
 
@@ -58,6 +74,18 @@ class DVTrainer:
         self.n_iter = self.n_epoch = 0  # keep counts for logging
 
     def step(self, epochs=1):
+        """
+        Carries out the gradient descend for a number of epochs and returns 
+        the divergence estimate evaluated over the entire data.
+
+        Loss for each epoch is recorded into the log, but only one divergence 
+        estimate is computed/logged using the entire dataset. Rerun the method,
+        using a loop, to continue to train the neural network and log the result.
+
+        Parameters:
+        ----------
+        epochs : number of epochs
+        """
         for i in range(epochs):
             self.n_epoch += 1
 
@@ -86,7 +114,6 @@ class DVTrainer:
             estimate = DV(Z, Z_ref, self.net).item()
             self.writer.add_scalar("Estimate", estimate, global_step=self.n_epoch)
             return estimate
-
         
 def plot_samples_with_kde(df, **kwargs):
     p = sns.PairGrid(df, **kwargs)

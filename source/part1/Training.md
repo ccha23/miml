@@ -181,7 +181,6 @@ With a learning rate of `0.001`:
 for i in range(1000):
     w.grad = None  # zero the gradient to avoid accumulation
     L(w).backward()
-    w.grad
     with torch.no_grad():  # updates the weights in place without gradient calculation
         w -= w.grad * 1e-3
 
@@ -352,8 +351,8 @@ $$
 ```{code-cell} ipython3
 def DV(Z, Z_ref, net):
     avg_tZ = net(Z).mean()  # (a)
-    avg_etZ_ref = net(Z_ref).logsumexp(dim=0) - np.log(Z_ref.shape[0])  # (b) - (c)
-    return avg_tZ - avg_etZ_ref
+    log_avg_etZ_ref = net(Z_ref).logsumexp(dim=0) - np.log(Z_ref.shape[0])  # (b) - (c)
+    return avg_tZ - log_avg_etZ_ref
 
 
 DV_estimate = DV(Z, Z_ref, net)

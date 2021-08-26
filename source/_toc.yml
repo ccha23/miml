@@ -9,6 +9,10 @@ parts:
     - file: part1/DonskerVaradhan.md
     - file: part1/Training.md
     - file: part1/f-Divergence.md
+  - caption: Part 2
+#     numbered: false
+    chapters:
+    - file: part2/MI.md
     
   - caption: Appendices
     chapters:
