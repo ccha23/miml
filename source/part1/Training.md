@@ -233,11 +233,11 @@ For a neural network to approximate a sophisticated function, it should have man
 
 The following code [defines a simple neural network][define] with 3 fully-connected (fc) hidden layers:
 
-![Neural net](nn.dio.svg)
+![Neural net](nn.dio.svg) 
 
 where 
 
-- $\M{W}_l$ and $\M{b}_l$ are the weight and bias respectively for the linear transformation $\R{W}_l a_l + b_l$ of the $l$-th layer; and
+- $\M{W}_l$ and $\M{b}_l$ are the weight and bias respectively for the linear transformation $\M{W}_l \M{a}_l + \M{b}_l$ of the $l$-th layer; and
 - $\sigma$ for the first 2 hidden layers is an activation function called the [*exponential linear unit (ELU)*](https://pytorch.org/docs/stable/generated/torch.nn.ELU.html).
 
 [define]: https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#define-the-network
@@ -551,7 +551,7 @@ class DVTrainer:
     Estimate D(P_Z||P_Z') using samples Z and Z' by training a network t to maximize
         avg(t(Z)) - log avg(e^t(Z'))
 
-    parameters:
+    Parameters:
     ----------
 
     Z, Z_ref : Tensors with first dimension indicing the samples of Z and Z' respect.

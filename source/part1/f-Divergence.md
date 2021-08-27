@@ -36,7 +36,7 @@ $\def\abs#1{\left\lvert #1 \right\rvert}
 Consider the more general problem of estimating the $f$-divergence in {eq}`f-D`:
 
 $$
-D_f(P_{\R{Z}}\|P_{\R{Z}'}) = E\left[f\left(\frac{dP_{\R{Z}}(\R{Z})}{dP_{\R{Z}'}(\R{Z})}\right)\right].
+D_f(P_{\R{Z}}\|P_{\R{Z}'}) = E\left[f\left(\frac{dP_{\R{Z}}(\R{Z}')}{dP_{\R{Z}'}(\R{Z}')}\right)\right].
 $$
 
 +++
@@ -183,7 +183,7 @@ where (a) is by the convexity of $f$, and (b) is by the linearity of expectation
 
 +++
 
-For a clearer understanding, let consider a different choice of $F$ for the KL divergence:
+For a clearer understanding, consider a different choice of $F$ for the KL divergence:
 
 $$
 D(P_{\R{Z}}\|P_{\R{Z}'}) = F'\left[r\right]
@@ -243,7 +243,7 @@ $$ (R)
 
 $$
 \begin{align}
-\mc{T} &\supseteq \Set{t:\mc{Z} \to \mathbb{R}}
+\mc{T} &\subseteq \Set{t:\mc{Z} \to \mathbb{R}}
 \end{align}
 $$ (T)
 
@@ -288,7 +288,7 @@ Note that the supremums in {eq}`convex-conjugate1` and {eq}`convex-conjugate2` a
 
 $$\underbrace{[[F]^*]^*}_{=F}\left[\frac{dP_{\R{Z}}}{dP_{\R{Z}'}}\right]$$
 
-which gives {eq}`convex-conjugate2` by expanding the outer/later transform. The equality is by the property that Fenchel-Legendre transform is its own inverse for strictly convex functional $F$.
+gives {eq}`convex-conjugate2` by expanding the outer/later transform. The equality is by the property that Fenchel-Legendre transform is its own inverse for strictly convex functional $F$. This completes the proof by {eq}`D->F`.
 
 [FL]: https://en.wikipedia.org/wiki/Convex_conjugate
 
