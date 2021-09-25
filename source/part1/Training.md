@@ -28,20 +28,33 @@ $\def\abs#1{\left\lvert #1 \right\rvert}
 \def\d{\mathrm{\mathstrut d}}$
 
 ```{code-cell} ipython3
-from gaussian import *
+# init
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import tensorboard as tb
 import torch
 import torch.optim as optim
 from torch import Tensor, nn
 from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
-import tensorboard as tb
 
 %load_ext tensorboard
+%load_ext jdc
 %matplotlib inline
+
+SEED = 0
+
+# create samples
+XY_rng = np.random.default_rng(SEED)
+rho = 1 - 0.19 * XY_rng.random()
+mean, cov, n = [0, 0], [[1, rho], [rho, 1]], 1000
+XY = XY_rng.multivariate_normal(mean, cov, n)
+
+XY_ref_rng = np.random.default_rng(SEED)
+cov_ref, n_ = [[1, 0], [0, 1]], n
+XY_ref = XY_ref_rng.multivariate_normal(mean, cov_ref, n_)
 ```
 
 We will train a neural network with `torch` and use GPU if available:
@@ -59,7 +72,7 @@ When GPU is available, you can use [GPU dashboards][gpu] on the left to monitor 
 
 +++
 
-![GPU](gpu.dio.svg)
+![GPU](images/gpu.dio.svg)
 
 +++
 
@@ -138,11 +151,11 @@ plt.show()
 
 +++
 
-A gradient descent algorithm updates the parameter $w$ iteratively starting with some initial $w^{(0)}$:
+A gradient descent algorithm updates the parameter $w$ iteratively starting with some initial $w_0$:
 
-$$w^{(i+1)} = w^{(i)} - s^{(i)} \nabla L(w^{(i)}) \qquad \text{for }i\geq 0,$$
+$$w_{i+1} = w_i - s_i \nabla L(w_i) \qquad \text{for }i\geq 0,$$
 
-where $s$ is the *learning rate* (*step size*).
+where $s_i$ is the *learning rate* (*step size*).
 
 +++
 
@@ -150,9 +163,9 @@ where $s$ is the *learning rate* (*step size*).
 
 +++
 
-With $w^{(0)}=0$, 
+With $w=0$, 
 
-$$\nabla L(w^{(0)}) = \left.-e^{-w}\right|_{w=0}=-1,$$ 
+$$\nabla L(0) = \left.-e^{-w}\right|_{w=0}=-1,$$ 
 
 which can be computed using `backward` ([backpropagation][bp]):
 
@@ -233,7 +246,7 @@ For a neural network to approximate a sophisticated function, it should have man
 
 The following code [defines a simple neural network][define] with 3 fully-connected (fc) hidden layers:
 
-![Neural net](nn.dio.svg) 
+![Neural net](images/nn.dio.svg) 
 
 where 
 
@@ -289,25 +302,41 @@ sns.kdeplot(data=tZ_df, x="t")
 plt.show()
 ```
 
-For 2D sample $(x,y)\in \mc{Z}$, we can plot the neural network $t(x,y)$ as a heatmap:
+For 2D sample $(x,y)\in \mc{Z}$, we can plot the neural network $t(x,y)$ as a heatmap. The following code adds a method `plot` to `Net` using [`jdc`](https://alexhagen.github.io/jdc):
 
 ```{code-cell} ipython3
 :tags: []
 
-def plot_net_2(net, xmin=-5, xmax=5, ymin=-5, ymax=5, xgrids=50, ygrids=50, ax=None):
+%%add_to Net
+def plot(net, xmin=-5, xmax=5, ymin=-5, ymax=5, xgrids=50, ygrids=50, ax=None):
     """Plot a heat map of a neural network net. net can only have two inputs."""
     x, y = np.mgrid[xmin : xmax : xgrids * 1j, ymin : ymax : ygrids * 1j]
     xy = np.concatenate((x[:, :, None], y[:, :, None]), axis=2)
     with torch.no_grad():
-        z = net(Tensor(xy).to(DEVICE))[:, :, 0].cpu()
+        z = (
+            net(
+                torch.cat(
+                    [
+                        Tensor(x.reshape(-1, 1)).to(DEVICE),
+                        Tensor(y.reshape(-1, 1)).to(DEVICE),
+                    ],
+                    dim=-1,
+                )
+            )
+            .reshape(x.shape)
+            .cpu()
+        )
     if ax is None:
         ax = plt.gca()
     im = ax.pcolormesh(x, y, z, cmap="RdBu_r", shading="auto")
     ax.figure.colorbar(im)
-    ax.set(xlabel=r"$x$", ylabel=r"$y$", title=r"Heatmap of $t(x,y)$")
+    ax.set(xlabel=r"$x$", ylabel=r"$y$", title=r"Heatmap of $t(z)$ for $z=(x,y)$")
+```
 
+To plot the heatmap:
 
-plot_net_2(net)
+```{code-cell} ipython3
+net.plot()
 ```
 
 **Exercise** 
@@ -437,17 +466,30 @@ which is the negative lower bound of the VD formula in {eq}`DV` but on the minib
 
 $$\R{Z}_{\R{B}}:=(\R{Z}_i\mid i\in \R{B})\quad \text{and}\quad \R{Z}'_{\R{B}'}$$
 
-where $\R{B}$ and $\R{B}'$ are uniformly randomly chosen indices from $[n]$ and $[n']$ respectively.
+where $\R{B}$ and $\R{B}'$ are batches of uniformly randomly chosen indices from $[n]$ and $[n']$ respectively.
 
 +++
 
-An efficient implementation is to 
-- permute the samples first, and then
-- partition the samples into batches.
+The neural network parameter is updated
+
+$$
+\theta_{j+1} := \theta_j - s_j \nabla \R{L}_j(\theta_j),
+$$
+
+starting with a randomly initialized $\theta_0$ 
+where $s_j>0$ is the learning rate and $\R{L}_j$ is the loss evaluated on the $j$-th randomly chosen batches $\R{B}_j$ and $\R{B}'_j$.
 
 +++
 
-![Minibatch gradient descent](batch.dio.svg)
+The different batches are often obtained by 
+- permuting the samples first, and then
+- partitioning the samples into batches.
+
+This is illustrated by the figure below:
+
++++
+
+![Minibatch gradient descent](images/batch.dio.svg)
 
 ```{code-cell} ipython3
 n_iters_per_epoch = 10  # ideally a divisor of both n and n'
@@ -459,7 +501,7 @@ We will use `tensorboard` to show the training logs.
 Rerun the following to start a new log, for instance, after a change of parameters.
 
 ```{code-cell} ipython3
-if input('New log?[Y/n] ').lower() != 'n':
+if input("New log?[Y/n] ").lower() != "n":
     n_iter = n_epoch = 0  # keep counts for logging
     writer = SummaryWriter()  # create a new folder under runs/ for logging
 ```
@@ -480,8 +522,8 @@ if input("Train? [Y/n]").lower() != "n":
             optimizer.zero_grad()
 
             # obtain a random batch of samples
-            batch_Z = Z[idx[i : Z.shape[0] : batch_size]]
-            batch_Z_ref = Z_ref[idx_ref[i : Z_ref.shape[0] : batch_size_ref]]
+            batch_Z = Z[idx[j : Z.shape[0] : n_iters_per_epoch]]
+            batch_Z_ref = Z_ref[idx_ref[j : Z_ref.shape[0] : n_iters_per_epoch]]
 
             # define the loss as negative DV divergence lower bound
             loss = -DV(batch_Z, batch_Z_ref, net)
@@ -494,8 +536,8 @@ if input("Train? [Y/n]").lower() != "n":
     with torch.no_grad():
         estimate = DV(Z, Z_ref, net).item()
         writer.add_scalar("Estimate", estimate, global_step=n_epoch)
-        plot_net_2(net)
-        print('Divergence estimation:', estimate)
+        net.plot()
+        print("Divergence estimation:", estimate)
 ```
 
 Run the following to show the losses and divergence estimate in `tensorboard`. You can rerun the above cell to train the neural network more.
@@ -512,7 +554,9 @@ where $\rho$ is the randomly generated correlation in the previous notebook.
 
 +++
 
-**Exercise** Compute the ground truth using the formula above.
+**Exercise** 
+
+Compute the ground truth using the formula above.
 
 ```{code-cell} ipython3
 ---
@@ -526,14 +570,16 @@ nbgrader:
 tags: [hide-cell]
 ---
 ### BEGIN SOLUTION
-ground_truth = -0.5*np.log(1-rho**2)
+ground_truth = -0.5 * np.log(1 - rho ** 2)
 ### END SOLUTION
 ground_truth
 ```
 
 **Exercise** 
 
-See if you can get an estimate close to this value by training the neural network repeatedly.
+See if you can get an estimate close to this value by training the neural network repeatedly as shown below.
+
+![Divergence estimate](images/div_est.dio.svg)
 
 +++
 
@@ -541,7 +587,7 @@ See if you can get an estimate close to this value by training the neural networ
 
 +++
 
-It is a good idea to encapsulate the training by a class, so multiple configurations can be run without infering each other:
+It is a good idea to encapsulate the training by a class, so multiple configurations can be run without interfering each other:
 
 ```{code-cell} ipython3
 class DVTrainer:
@@ -565,14 +611,10 @@ class DVTrainer:
         self.Z = Z
         self.Z_ref = Z_ref
         self.net = net
+        self.n_iters_per_epoch = n_iters_per_epoch  # ideally a divisor of both n and n'
 
         # set optimizer
         self.optimizer = optim.Adam(net.parameters(), **kwargs)
-
-        # batch sizes
-        self.n_iters_per_epoch = n_iters_per_epoch  # ideally a divisor of both n and n'
-        self.batch_size = int((Z.shape[0] + 0.5) / n_iters_per_epoch)
-        self.batch_size_ref = int((Z_ref.shape[0] + 0.5) / n_iters_per_epoch)
 
         # logging
         self.writer = SummaryWriter(
@@ -582,10 +624,10 @@ class DVTrainer:
 
     def step(self, epochs=1):
         """
-        Carries out the gradient descend for a number of epochs and returns 
+        Carries out the gradient descend for a number of epochs and returns
         the divergence estimate evaluated over the entire data.
 
-        Loss for each epoch is recorded into the log, but only one divergence 
+        Loss for each epoch is recorded into the log, but only one divergence
         estimate is computed/logged using the entire dataset. Rerun the method,
         using a loop, to continue to train the neural network and log the result.
 
@@ -605,9 +647,9 @@ class DVTrainer:
                 self.optimizer.zero_grad()
 
                 # obtain a random batch of samples
-                batch_Z = self.Z[idx[i : self.Z.shape[0] : self.batch_size]]
+                batch_Z = self.Z[idx[i : self.Z.shape[0] : self.n_iters_per_epoch]]
                 batch_Z_ref = self.Z_ref[
-                    idx_ref[i : self.Z_ref.shape[0] : self.batch_size_ref]
+                    idx_ref[i : self.Z_ref.shape[0] : self.n_iters_per_epoch]
                 ]
 
                 # define the loss as negative DV divergence lower bound
@@ -615,7 +657,9 @@ class DVTrainer:
                 loss.backward()  # calculate gradient
                 self.optimizer.step()  # descend
 
-                self.writer.add_scalar("Loss/train", loss.item(), global_step=self.n_iter)
+                self.writer.add_scalar(
+                    "Loss/train", loss.item(), global_step=self.n_iter
+                )
 
         with torch.no_grad():
             estimate = DV(Z, Z_ref, self.net).item()
@@ -631,13 +675,13 @@ net = Net().to(DEVICE)
 trainer = DVTrainer(Z, Z_ref, net, n_iters_per_epoch=10)
 ```
 
-Next, we run `step` iteractively to train the neural network:
+Next, run `step` iteratively to train the neural network:
 
 ```{code-cell} ipython3
 if input("Train? [Y/n]").lower() != "n":
     for i in range(10):
-        trainer.step(10)
-    plot_net_2(net)
+        print("Divergence estimate:", trainer.step(10))
+    net.plot()
 ```
 
 ```{code-cell} ipython3

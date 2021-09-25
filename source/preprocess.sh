@@ -7,9 +7,10 @@ do
     case $input in
         [yY][eE][sS]|[yY]|'')
     echo "Executing..."
-    jupytext --from ipynb --to md:myst -o $f.md $f.ipynb
-    perl -0777 -i -pe 's/---\s*\*\*(.*?)\*\*(.*)(\X*?)---/````{prf:\l$1}$2$3````/gm' $f.md
-    perl -0777 -i -pe 's/(\*\*Solution\*\*\X*?)((?:\+\+\+|```|\Z))/````{toggle}\n$1````\n\n$2/gm' $f.md
+    #nbgrader generate_assignment --force --assignment="$(dirname "${f}")"
+    jupytext --from ipynb --to md:myst -o "${f}.md" "${f}.ipynb"
+    perl -0777 -i -pe 's/---\s*\*\*(.*?)\*\*(.*)(\X*?)---/````{prf:\l$1}$2$3````/gm' "${f}.md"
+    perl -0777 -i -pe 's/(\*\*Solution\*\*\X*?)((?:\+\+\+|```|\Z))/````{toggle}\n$1````\n\n$2/gm' "${f}.md"
     ;;
         [nN][oO]|[nN])
     echo "Skipped..."

@@ -300,7 +300,7 @@ The proof is illustrated in the following figure:
 
 +++
 
-![$f$-Divergence](f-D.dio.svg)
+![$f$-Divergence](images/f-D.dio.svg)
 
 +++
 
@@ -312,7 +312,7 @@ Let's breakdown the details:
 
 For the purpose of the illustration, visualize the convex functional $F$ simply as a curve in 2D.
 
-![$f$-Divergence 1](f-D-Copy1.dio.svg)  
+![$f$-Divergence 1](images/f-D-Copy1.dio.svg)  
 
 The $f$-divergence is then the $y$-coordinate of a point on the curve indicated above, with $r$ being the density ratio $\frac{dP_{\R{Z}}}{dP_{\R{Z}'}}$.
 
@@ -322,7 +322,7 @@ The $f$-divergence is then the $y$-coordinate of a point on the curve indicated 
 
 To obtain a lower bound on $F$, consider any tangent of the curve with an arbitrary slope $t\cdot dP_{\R{Z}'}$
 
-![$f$-Divergence 2](f-D-Copy2.dio.svg)
+![$f$-Divergence 2](images/f-D-Copy2.dio.svg)
 
 The lower bound is given by the $y$-coordinate of a point on the tangent with $r$ being the density ratio.
 
@@ -347,7 +347,7 @@ By the convexity of $F$, the tangent must be below $F$.
 
 To calculate the lower bound, denote the $y$-intercept as $-F^*[t]$:
 
-![$f$-Divergence 3](f-D-Copy3.dio.svg)  
+![$f$-Divergence 3](images/f-D-Copy3.dio.svg)  
 
 Thinking of a function as nothing but a vector, the displacement from the $y$-intercept to the lower bound is given by the inner product of the slope and the density ratio. 
 
@@ -357,7 +357,7 @@ Thinking of a function as nothing but a vector, the displacement from the $y$-in
 
 To make the bound tight, maximize the bound over the choice of the slope or $t$:
 
-![$f$-Divergence 4](f-D-Copy4.dio.svg) 
+![$f$-Divergence 4](images/f-D-Copy4.dio.svg) 
 
 This gives the bound in {eq}`convex-conjugate2`. It remains to show {eq}`convex-conjugate1`.
 
@@ -367,7 +367,7 @@ This gives the bound in {eq}`convex-conjugate2`. It remains to show {eq}`convex-
 
 To compute the $y$-intercept or $F^*[t]$, let $r^*$ be the value of $r$ where the tangent touches the convex curve:
 
-![$f$-Divergence 5](f-D.dio.svg) 
+![$f$-Divergence 5](images/f-D.dio.svg) 
 
 The displacement from the point at $r^*$ to the $y$-intercept can be computed as the inner product of the slope and $r^*$.
 

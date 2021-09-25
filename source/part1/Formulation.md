@@ -50,7 +50,7 @@ The problem of estimating the mutual information is:
 +++ {"slideshow": {"slide_type": "-"}}
 
 ````{prf:definition} MI Estimation  
-:label: MI-estimation
+:label: mi-estimation
 
 Given $n$ samples
 
