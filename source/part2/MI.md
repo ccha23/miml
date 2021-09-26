@@ -377,6 +377,15 @@ Complete the definition of `forward` so that the neural network $t_{\theta}$ is 
 - Use `F.elu` for the activation function $\sigma$.
 
 ```{code-cell} ipython3
+---
+nbgrader:
+  grade: false
+  grade_id: MINE-Net
+  locked: false
+  schema_version: 3
+  solution: true
+  task: false
+---
 class Net(nn.Module):
     def __init__(self, input_size=2, hidden_size=100, sigma=0.02):
         super().__init__()
@@ -438,8 +447,16 @@ net.plot()
 To implement a neural network trainer for MINE similar to `DVTrainer`, completes the definition of `loss` according to {eq}`MINE:mv`:
 
 ```{code-cell} ipython3
-:tags: []
-
+---
+nbgrader:
+  grade: false
+  grade_id: MINETrainer
+  locked: false
+  schema_version: 3
+  solution: true
+  task: false
+tags: []
+---
 class MINETrainer:
     def __init__(
         self, X, Y, net, n_iters_per_epoch, writer_params={}, m=1, beta=0.1, **kwargs
