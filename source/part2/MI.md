@@ -331,7 +331,7 @@ In summary:
 
 +++
 
-````{prf:definition}
+````{prf:definition} 
 
 MINE estimates the mutual information $I(\R{X}\wedge\R{Y})$ as $\R{I}_{\text{MINE}}(\theta_j)$ {eq}`MINE` where $\theta_j$ is updated by descending along the gradient of $\R{L}_{\text{MINE},j}$ {eq}`MINE:mv` iteratively after $j$ steps.
 
@@ -605,7 +605,7 @@ Consider another formula for mutual information:
 
 +++
 
-````{prf:proposition}  
+````{prf:proposition} 
 :label: MI-3D
 
 $$
@@ -620,7 +620,7 @@ for any product reference distribution $P_{\R{X}'}\times P_{\R{Y}'}$ for which t
 
 +++
 
-````{prf:corollary}  
+````{prf:corollary} 
 :label: MI-ub
 
 
@@ -636,7 +636,7 @@ where the optimal solution is $P_{\R{X}'}\times P_{\R{Y}'}=P_{\R{X}}\times P_{\R
 
 +++
 
-````{prf:proof}
+````{prf:proof} 
 
 {eq}`MI-ub` follows from {eq}`MI-3D` directly since the divergences are non-negative. To prove the proposition:
 

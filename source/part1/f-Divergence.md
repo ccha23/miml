@@ -93,7 +93,7 @@ The idea is to think of the $f$-divergence as a convex *function(al)* evaluated 
 
 +++
 
-````{prf:proposition}  
+````{prf:proposition} 
 :label: D->F
 
 $f$-divergence {eq}`f-D` is
@@ -261,7 +261,7 @@ The following is a generalization of DV formula for estimating $f$-divergence {c
 
 +++
 
-````{prf:proposition}  
+````{prf:proposition} 
 :label: convex-conjugate
 
 $$
@@ -282,7 +282,7 @@ $$ (convex-conjugate1)
 
 +++
 
-````{prf:proof}
+````{prf:proof} 
 
 Note that the supremums in {eq}`convex-conjugate1` and {eq}`convex-conjugate2` are [Fenchel-Legendre transforms][FL]. Denoting the transform as $[\cdot]^*$,
 

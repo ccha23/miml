@@ -43,7 +43,7 @@ To explain the idea of neural estimation, consider the following characterizatio
 
 +++
 
-````{prf:proposition}  
+````{prf:proposition} 
 :label: DV1
 
 $$
@@ -65,7 +65,7 @@ where the unique optimal solution is $Q=P_{\R{Z}}$.
 
 +++
 
-````{prf:proof}
+````{prf:proof} 
 
 To prove {eq}`D1`,
 
@@ -125,7 +125,7 @@ which absorbs the unknown reference into the parameter.
 
 +++
 
-````{prf:proposition}  
+````{prf:proposition} 
 :label: DV2
 
 $$
